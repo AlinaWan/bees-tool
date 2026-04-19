@@ -2,42 +2,74 @@ import cv2
 import numpy as np
 from ahk import AHK
 from mss import mss
-import mss.tools
 import tkinter as tk
-import time
 import ctypes
+import time
 
 # --- CONFIGURATION ---
-CONFIDENCE_THRESHOLD = 0.82
-ROTATION_STEP = 45
-DRAG_STEP = 450   # Higher = larger steps (faster drag)
-MAX_STEPS = 2
-DRAG_FREQUENCY = 0.02      # Faster scan interval
+CONFIDENCE_THRESHOLD = 0.82 # Confidence to track
+ROTATION_STEP = 45 # Rotation steps
+DRAG_STEP = 500 # Drag step to drag
+COOLDOWN_MS = 200 # Cooldown
+LOCK_DURATION_MS = 10 # How long the object must persist to lock
+DOWNSCALE_FACTOR = 0.5  # 0.5 = 50% size (5x faster processing)
 # ---------------------
 
 ahk = AHK()
-
-# DPI FIX
 user32 = ctypes.windll.user32
 SCREEN_WIDTH = user32.GetSystemMetrics(0)
-# We calculate scale factor inside the loop to ensure it's fresh
-SCALE_FACTOR = 1.0 
+
+class ScanAreaOverlay:
+    """Creates a persistent overlay showing the scan boundaries and 8 markers."""
+    def __init__(self, area, scale):
+        self.root = tk.Tk()
+        self.root.overrideredirect(True)
+        self.root.attributes("-topmost", True, "-transparentcolor", "black")
+        
+        # Geometry matches the search_area exactly
+        # We divide by scale because Tkinter uses screen logical coordinates
+        w = int(area['width'] / scale)
+        h = int(area['height'] / scale)
+        x = int(area['left'] / scale)
+        y = int(area['top'] / scale)
+        
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.canvas = tk.Canvas(self.root, width=w, height=h, bg="black", highlightthickness=0)
+        self.canvas.pack()
+
+        
+        # Dashed bounding box
+        # self.canvas.create_rectangle(0, 0, w-1, h-1, outline="red", width=1, dash=(4, 4))
+
+        # 8 Points: [x, y] relative to the canvas
+        points = [
+            (0, 0), (w//2, 0), (w, 0),      # Top row
+            (0, h//2), (w, h//2),           # Middle row
+            (0, h), (w//2, h), (w, h)       # Bottom row
+        ]
+
+        for px, py in points:
+            size = 2
+            self.canvas.create_rectangle(px-size, py-size, px+size, py+size, fill="red")
+
+    def update(self):
+        self.root.update()
 
 class TooltipMarker:
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()
         self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
-        self.frame = tk.Frame(self.root, width=60, height=25, highlightbackground="lime", highlightthickness=2, bg="black")
-        self.frame.pack()
-        self.label = tk.Label(self.frame, text="TARGET", fg="lime", bg="black", font=("Arial", 7, "bold"))
-        self.label.place(relx=0.5, rely=0.5, anchor="center")
-
-    def show(self, x, y, img_h, scale):
-        pos_x = int((x / scale) - 30)
-        pos_y = int((y / scale) - (img_h / scale / 2) - 40)
-        self.root.geometry(f"60x25+{pos_x}+{pos_y}")
+        self.root.attributes("-topmost", True, "-transparentcolor", "black")
+        self.canvas = tk.Canvas(self.root, width=80, height=80, bg="black", highlightthickness=0)
+        self.canvas.pack()
+        self.circle = self.canvas.create_oval(10, 10, 70, 70, outline="lime", width=2)
+        
+    def show(self, x, y, scale, locked=False):
+        color = "cyan" if locked else "lime"
+        self.canvas.itemconfig(self.circle, outline=color)
+        pos_x, pos_y = int((x / scale) - 40), int((y / scale) - 40)
+        self.root.geometry(f"80x80+{pos_x}+{pos_y}")
         self.root.deiconify()
         self.root.update()
 
@@ -46,133 +78,131 @@ class TooltipMarker:
         try: self.root.update()
         except: pass
 
-def rotate_image(image, angle):
-    (h, w) = image.shape[:2]
-    center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    return cv2.warpAffine(image, M, (w, h), borderMode=cv2.BORDER_REPLICATE)
-
-def get_screen_data():
-    """Captures screen and returns (image, scale_factor)."""
-    # Use mss.mss() instead of just mss()
-    with mss.mss() as sct: 
-        monitor = sct.monitors[1]
-        try:
-            sct_img = sct.grab(monitor)
-            raw_width = monitor['width']
-            scale = raw_width / SCREEN_WIDTH
-            img = np.array(sct_img)
-            gray = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
-            return gray, scale
-        except Exception as e:
-            # This catches the gdi32 error and prevents a crash
-            return None, 1.0
-
-def find_logic(template_gray, screen_gray):
-    best_val = -1
-    best_info = None
+def pre_rotate_templates(template):
+    # Downscale the template to match the downscaled screen
+    t = cv2.resize(template, (0,0), fx=DOWNSCALE_FACTOR, fy=DOWNSCALE_FACTOR)
+    rotated_cache = []
     for angle in range(0, 360, ROTATION_STEP):
-        rotated = rotate_image(template_gray, angle)
-        res = cv2.matchTemplate(screen_gray, rotated, cv2.TM_CCOEFF_NORMED)
-        _, max_val, _, max_loc = cv2.minMaxLoc(res)
-        if max_val > best_val:
-            best_val = max_val
-            best_info = (max_loc, angle, rotated.shape)
-            if best_val > 0.95: break 
-    return best_val, best_info
+        (h, w) = t.shape[:2]
+        M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+        rotated = cv2.warpAffine(t, M, (w, h), borderMode=cv2.BORDER_REPLICATE)
+        rotated_cache.append({'img': rotated, 'angle': angle})
+    return rotated_cache
 
 def run_app():
     marker = TooltipMarker()
-    template = cv2.imread('target.png', cv2.IMREAD_GRAYSCALE)
-
-    if template is None:
-        print("Error: target.png not found.")
-        return
-
+    raw_template = cv2.imread('target.png', cv2.IMREAD_GRAYSCALE)
+    if raw_template is None: return
+    
+    template_cache = pre_rotate_templates(raw_template)
     ahk.run_script("CoordMode, Mouse, Screen")
-    print("[*] Bees tool running.")
 
-    BASE_DRAG_X = -1   # ALWAYS drag left-to-right base direction
-    BASE_DRAG_Y = 0
+    # Store counts of how many times each rotation index was the winner
+    hit_counts = np.zeros(len(template_cache), dtype=int)
+    # Initial search order is just 0 to N
+    search_order = list(range(len(template_cache)))
+    
+    last_drag_time = 0
+    target_start_time = None
+    
+    with mss() as sct:
+        full_mon = sct.monitors[1]
+        full_w = full_mon['width']
+        full_h = full_mon['height']
+        scale = (full_w / SCREEN_WIDTH)
 
-    while True:
-        screen_gray, scale = get_screen_data()
-        if screen_gray is None:
-            continue
+        # 1. Calculate the center of the screen
+        center_x = full_mon['left'] + (full_w // 2)
+        center_y = full_mon['top'] + (full_h // 2)
 
-        val, info = find_logic(template, screen_gray)
+        # 2. Define area: Center +/- half of DRAG_STEP
+        # We use DRAG_STEP directly here as the total width/height
+        half_step = DRAG_STEP // 2
+        
+        search_area = {
+            "top": center_y - half_step,
+            "left": center_x - half_step,
+            "width": DRAG_STEP,
+            "height": DRAG_STEP
+        }
 
-        if val > CONFIDENCE_THRESHOLD:
-            (max_loc, angle, (h, w)) = info
-            cx = max_loc[0] + w // 2
-            cy = max_loc[1] + h // 2
+        # We need this for the marker logic later
+        # Since we are no longer using left_offset, we set it to the area's left
+        search_left = search_area["left"]
+        search_top = search_area["top"]
 
-            ahk.mouse_move(int(cx / scale), int(cy / scale), speed=3)
-            ahk.click(button='left', direction='down')
+        # Initialize the scan area visualizer (from previous step)
+        area_visual = ScanAreaOverlay(search_area, scale)
+        
+        while True:
+            area_visual.update()
+            # Capture only the square
+            sct_img = sct.grab(search_area)
+            img = np.array(sct_img)
+            gray = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+            small_gray = cv2.resize(gray, (0,0), fx=DOWNSCALE_FACTOR, fy=DOWNSCALE_FACTOR)
 
-            marker.show(cx, cy, h, scale)
+            best_val = -1
+            best_info = None
+            winner_idx = None
+            
+            # Check templates using the distribution-based search order
+            for i in search_order:
+                item = template_cache[i]
+                res = cv2.matchTemplate(small_gray, item['img'], cv2.TM_CCOEFF_NORMED)
+                _, max_val, _, max_loc = cv2.minMaxLoc(res)
+                if max_val > best_val:
+                    best_val = max_val
+                    best_info = (max_loc, item['angle'], item['img'].shape)
+                    winner_idx = i
+                    if best_val > 0.95: break
 
-            base_dx = -1
-            base_dy = 0
+            now = time.perf_counter()
+            if best_val > CONFIDENCE_THRESHOLD:
+                # Update distribution: Increment hits and re-sort search order for next frame
+                hit_counts[winner_idx] += 1
+                search_order = sorted(range(len(template_cache)), key=lambda k: hit_counts[k], reverse=True)
 
-            angle = (-angle) % 360 # must use negative for vertical
-            rad = np.deg2rad(angle)
+                if target_start_time is None:
+                    target_start_time = now
+                
+                locked_duration = (now - target_start_time) * 1000
+                is_locked = locked_duration >= LOCK_DURATION_MS
+                
+                (max_loc, angle, (h, w)) = best_info
+                
+                # Logic: Find center in the small image -> upscale to full capture -> add offset -> scale for AHK
+                # Coordinates within the square capture
+                local_cx = (max_loc[0] + w // 2) / DOWNSCALE_FACTOR
+                local_cy = (max_loc[1] + h // 2) / DOWNSCALE_FACTOR
+                
+                # Global coordinates (important: Add the search box offsets back)
+                global_cx = local_cx + search_left
+                global_cy = local_cy + search_top
+                
+                # Show marker and move mouse
+                marker.show(global_cx, global_cy, scale, locked=is_locked)
 
-            # rotate base vector by detected angle
-            step_x = int((base_dx * np.cos(rad) - base_dy * np.sin(rad)) * DRAG_STEP)
-            step_y = int((base_dx * np.sin(rad) + base_dy * np.cos(rad)) * DRAG_STEP)
+                if is_locked and (now - last_drag_time) * 1000 > COOLDOWN_MS:
+                    # Final screen coordinates for AHK
+                    ahk_x = int(global_cx / scale)
+                    ahk_y = int(global_cy / scale)
+                    
+                    ahk.mouse_move(ahk_x, ahk_y, speed=1)
+                    ahk.mouse_move(1, 0, relative=True) # relative nudge is required to register new
+                    ahk.click(button='right', direction='up') # force rmb up if it's down
+                    ahk.click(button='left', direction='down')
 
-            start_x, start_y = cx, cy
-            moved = False
-            still_frames = 0
-            steps_taken = 0
-
-            while True:
-                ahk.mouse_move(step_x, step_y, relative=True, speed=1)
-                steps_taken += 1
-
-                # Check if we reached the limit
-                if steps_taken >= MAX_STEPS:
+                    rad = np.deg2rad(-angle % 360)
+                    ahk.mouse_move(int(-np.cos(rad)*DRAG_STEP), int(-np.sin(rad)*DRAG_STEP), relative=True, speed=1)
+                    ahk.mouse_move(1, 0, relative=True)
                     ahk.click(button='left', direction='up')
-                    marker.hide()
-                    break # Exit the drag loop
 
-                screen_gray, _ = get_screen_data()
-                if screen_gray is None:
-                    break
-
-                val2, info2 = find_logic(template, screen_gray)
-
-                if val2 < (CONFIDENCE_THRESHOLD - 0.15):
-                    ahk.click(button='left', direction='up')
-                    marker.hide()
-                    break
-
-                loc, _, (nh, nw) = info2
-                tx = loc[0] + nw // 2
-                ty = loc[1] + nh // 2
-
-                marker.show(tx, ty, nh, scale)
-
-                movement = np.hypot(tx - start_x, ty - start_y)
-
-                # confirm movement
-                if not moved:
-                    if movement > 25:
-                        moved = True
-                    else:
-                        still_frames += 1
-
-                    if still_frames > 6:
-                        ahk.click(button='left', direction='up')
-                        marker.hide()
-                        break
-
-                time.sleep(DRAG_FREQUENCY)
-
-        else:
-            marker.hide()
-            time.sleep(0.01)
+                    last_drag_time = time.perf_counter()
+                    target_start_time = None
+            else:
+                target_start_time = None
+                marker.hide()
 
 if __name__ == "__main__":
     run_app()
