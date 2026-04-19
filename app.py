@@ -11,7 +11,7 @@ CONFIDENCE_THRESHOLD = 0.82 # Confidence to track
 ROTATION_STEP = 45 # Rotation steps
 DRAG_STEP = 500 # Drag step to drag
 COOLDOWN_MS = 200 # Cooldown
-LOCK_DURATION_MS = 10 # How long the object must persist to lock
+LOCK_DURATION_MS = 20 # How long the object must persist to lock
 DOWNSCALE_FACTOR = 0.5  # 0.5 = 50% size (5x faster processing)
 # ---------------------
 
@@ -61,15 +61,46 @@ class TooltipMarker:
         self.root.withdraw()
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True, "-transparentcolor", "black")
-        self.canvas = tk.Canvas(self.root, width=80, height=80, bg="black", highlightthickness=0)
+        
+        # Increased canvas height slightly to fit the text below
+        self.canvas = tk.Canvas(self.root, width=1000, height=1000, bg="black", highlightthickness=0)
         self.canvas.pack()
+        
+        # The ROI Circle
         self.circle = self.canvas.create_oval(10, 10, 70, 70, outline="lime", width=2)
         
-    def show(self, x, y, scale, locked=False):
+        # The Data Label (aligned left via anchor="nw")
+        # font="Consolas" gives it that 'code' look
+        self.debug_text = self.canvas.create_text(10, 75, anchor="nw", fill="lime", font=("Consolas", 8))
+        self.line = None 
+        
+    def show(self, x, y, scale, angle=0, confidence=0, locked=False, drag_to=None, winner_idx=None):
         color = "cyan" if locked else "lime"
         self.canvas.itemconfig(self.circle, outline=color)
+        self.canvas.itemconfig(self.debug_text, fill=color)
+
+        # data
+        logic_str = (
+            f"VEC: {angle:03}°\n"
+            f"SCORE: {confidence*100:.1f}%\n"
+            f"POS: ({int(x/scale)}, {int(y/scale)})\n"
+            f"IDX: {winner_idx if winner_idx is not None else -1}"
+        )
+        self.canvas.itemconfig(self.debug_text, text=logic_str)
+
+        # 2. Line Logic
+        if self.line:
+            self.canvas.delete(self.line)
+            self.line = None
+        if locked and drag_to:
+            start_x, start_y = 40, 40 
+            end_x = (drag_to[0] - x) / scale + start_x
+            end_y = (drag_to[1] - y) / scale + start_y
+            self.line = self.canvas.create_line(start_x, start_y, end_x, end_y, fill="cyan", width=2, dash=(4, 2))
+
+        # 3. Position the window
         pos_x, pos_y = int((x / scale) - 40), int((y / scale) - 40)
-        self.root.geometry(f"80x80+{pos_x}+{pos_y}")
+        self.root.geometry(f"1000x1000+{pos_x}+{pos_y}")
         self.root.deiconify()
         self.root.update()
 
@@ -179,9 +210,16 @@ def run_app():
                 # Global coordinates (important: Add the search box offsets back)
                 global_cx = local_cx + search_left
                 global_cy = local_cy + search_top
+
+                drag_dest = None
+                if is_locked:
+                    rad = np.deg2rad(-angle % 360)
+                    dest_x = global_cx - (np.cos(rad) * DRAG_STEP)
+                    dest_y = global_cy - (np.sin(rad) * DRAG_STEP)
+                    drag_dest = (dest_x, dest_y)
                 
                 # Show marker and move mouse
-                marker.show(global_cx, global_cy, scale, locked=is_locked)
+                marker.show(global_cx, global_cy, scale, angle=angle, confidence=best_val, locked=is_locked, drag_to=drag_dest, winner_idx=winner_idx)
 
                 if is_locked and (now - last_drag_time) * 1000 > COOLDOWN_MS:
                     # Final screen coordinates for AHK
