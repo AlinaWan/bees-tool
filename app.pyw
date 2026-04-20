@@ -9,19 +9,24 @@ import time
 import keyboard
 import atexit
 
-# --- CONFIGURATION ---
-# Automation
-CONFIDENCE_THRESHOLD = 0.82 # Confidence to track
-ROTATION_STEP = 45 # Rotation steps
-DRAG_STEP = 500 # Drag step to drag
-COOLDOWN_MS = 100 # Cooldown
-LOCK_DURATION_MS = 20 # How long the object must persist to lock
-DOWNSCALE_FACTOR = 0.5  # 0.5 = 50% size (5x faster processing)
-BOUNDARY_MARGIN = 100 # Px allowed outside ROI before failing
+ahk = AHK()
+user32 = ctypes.windll.user32
+SCREEN_WIDTH = user32.GetSystemMetrics(0)
+SCREEN_HEIGHT = user32.GetSystemMetrics(1)
 
-# --- AUTO CAST ---
-MINIGAME_TIMEOUT_MS = 500
+##### CONFIGURATION #####
+# Automation
+CONFIDENCE_THRESHOLD = 0.82                   # Confidence to track
+ROTATION_STEP = 45                            # Rotation steps
+DRAG_STEP = int(SCREEN_HEIGHT * (500 / 1080)) # Drag step to drag based on the screen height
+COOLDOWN_MS = 100                             # Cooldown
+LOCK_DURATION_MS = 20                         # How long the object must persist to lock
+DOWNSCALE_FACTOR = 0.5                        # 0.5 = 50% size (4x faster processing)
+BOUNDARY_MARGIN = 100                         # Px allowed outside ROI before failing
+
+# Auto Cast
 AUTO_CAST_ENABLED = True
+MINIGAME_TIMEOUT_MS = 500
 AUTO_CAST_TOLERANCE = 5
 AUTO_CAST_CONFIDENCE = 0.90
 SEARCH_DEPTH = 20 # Define how deep the search range is
@@ -33,28 +38,19 @@ EXIT_KEY = 'shift+esc'
 # Template
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TARGET_PATH = os.path.join(SCRIPT_DIR, 'target.png')
-
-# --- AUTO CAST ---
 AUTO_CAST_IMAGE_PATH = os.path.join(SCRIPT_DIR, 'cast.png')
 
-# ---------------------
-
-ahk = AHK()
-user32 = ctypes.windll.user32
-SCREEN_WIDTH = user32.GetSystemMetrics(0)
-SCREEN_HEIGHT = user32.GetSystemMetrics(1)
+#########################
 
 # Global State
 is_active = False
 should_exit = False
 last_slider_time = 0
 
-# --- AUTO CAST STATE ---
 cast_calibrated = False
 cast_pixels = []
 cast_colors = []
 last_slider_time = time.perf_counter()
-# -----------------------
 
 def toggle_logic():
     global is_active
