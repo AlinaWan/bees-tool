@@ -115,10 +115,10 @@ class TooltipMarker:
 
         # data
         logic_str = (
-            f"VEC: {angle:03}°\n"
-            f"SCORE: {confidence*100:.1f}%\n"
-            f"POS: ({int(x/scale)}, {int(y/scale)})\n"
-            f"BOUNDS: {'OK' if in_bounds else 'OUT'}"
+            f"VEC:  {angle:03}° [IDX: {winner_idx}]\n"
+            f"CONF: {confidence*100:.1f}%\n"
+            f"POS:  ({int(x/scale)}, {int(y/scale)})\n"
+            f"BNDS: {'OK' if in_bounds else 'OUT'}"
         )
         self.canvas.itemconfig(self.debug_text, text=logic_str)
 
