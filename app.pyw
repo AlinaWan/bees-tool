@@ -262,9 +262,9 @@ def run_app():
                     ahk_x = int(global_cx / scale)
                     ahk_y = int(global_cy / scale)
                     
+                    ahk.click(button='right', direction='up') # force rmb up if it's down
                     ahk.mouse_move(ahk_x, ahk_y, speed=1)
                     ahk.mouse_move(1, 0, relative=True) # relative nudge is required to register new
-                    ahk.click(button='right', direction='up') # force rmb up if it's down
                     ahk.click(button='left', direction='down')
 
                     rad = np.deg2rad(-angle % 360)
