@@ -49,6 +49,15 @@ Adjust the constants within the header of the script to align with your hardware
 
 -----
 
+## ⌨️ Controls
+
+| Keybind | Action |
+| :--- | :--- |
+| <kbd>F6</kbd> | **Toggle State**: Switches the tool between Active (Green) and Standby (Red). |
+| <kbd>Shift</kbd> + <kbd>Esc</kbd> | **Termination**: Immediately closes the script and destroys all overlay windows. |
+
+-----
+
 ## 🖥️ Operational Logic
 
 ### The "Lock" Mechanism
@@ -57,11 +66,12 @@ Unlike primitive pixel-searchers, Bees Tool requires a **Stable Identification S
 
 ### Telemetry Overlay
 
-The script provides real-time visual feedback via a transparent Tkinter canvas:
+The script provides real-time visual feedback via a transparent Tkinter canvas. The **Region of Interest (ROI)** indicators communicate the current state:
 
-  * **Lime Circle**: Target identified; currently accumulating confidence.
-  * **Cyan Circle**: Target locked; 10ms threshold exceeded, interaction imminent.
-  * **Red Countdown**: Cooldown active; the tool is currently in a state of *refractory silence* to prevent input flooding.
+* **Green ROI Points**: Tool is **Active/ON**. The system is actively interrogating the search domain.
+* **Red ROI Points**: Tool is **Inactive/OFF**. Logic is suspended, though the overlay remains initialized.
+* **Lime Circle**: Target identified; currently accumulating confidence.
+* **Cyan Circle**: Target locked; confirmation threshold exceeded, interaction imminent.
 
 -----
 

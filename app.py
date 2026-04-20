@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 from ahk import AHK
@@ -5,19 +6,46 @@ from mss import mss
 import tkinter as tk
 import ctypes
 import time
+import keyboard
+import atexit
 
 # --- CONFIGURATION ---
+# Automation
 CONFIDENCE_THRESHOLD = 0.82 # Confidence to track
 ROTATION_STEP = 45 # Rotation steps
 DRAG_STEP = 500 # Drag step to drag
 COOLDOWN_MS = 200 # Cooldown
 LOCK_DURATION_MS = 20 # How long the object must persist to lock
 DOWNSCALE_FACTOR = 0.5  # 0.5 = 50% size (5x faster processing)
+
+# Hotkeys
+TOGGLE_KEY = 'f6'
+EXIT_KEY = 'shift+esc'
+
+# Template
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TARGET_PATH = os.path.join(SCRIPT_DIR, 'target.png')
 # ---------------------
 
 ahk = AHK()
 user32 = ctypes.windll.user32
 SCREEN_WIDTH = user32.GetSystemMetrics(0)
+
+# Global State
+is_active = False
+should_exit = False
+
+def toggle_logic():
+    global is_active
+    is_active = not is_active
+
+def exit_logic():
+    global should_exit
+    should_exit = True
+
+# Register Hotkeys
+keyboard.add_hotkey(TOGGLE_KEY, toggle_logic, suppress=True)
+keyboard.add_hotkey(EXIT_KEY, exit_logic, suppress=True)
 
 class ScanAreaOverlay:
     """Creates a persistent overlay showing the scan boundaries and 8 markers."""
@@ -37,22 +65,25 @@ class ScanAreaOverlay:
         self.canvas = tk.Canvas(self.root, width=w, height=h, bg="black", highlightthickness=0)
         self.canvas.pack()
 
-        
         # Dashed bounding box
-        # self.canvas.create_rectangle(0, 0, w-1, h-1, outline="red", width=1, dash=(4, 4))
+        # self.canvas.create_rectangle(0, 0, w-1, h-1, outline="white", width=1, dash=(4, 4))
 
         # 8 Points: [x, y] relative to the canvas
-        points = [
+        self.points = [
             (0, 0), (w//2, 0), (w, 0),      # Top row
             (0, h//2), (w, h//2),           # Middle row
             (0, h), (w//2, h), (w, h)       # Bottom row
         ]
-
-        for px, py in points:
+        self.dots = []
+        for px, py in self.points:
             size = 2
-            self.canvas.create_rectangle(px-size, py-size, px+size, py+size, fill="red")
+            dot = self.canvas.create_rectangle(px-size, py-size, px+size, py+size, fill="red", outline="")
+            self.dots.append(dot)
 
-    def update(self):
+    def update(self, active):
+        color = "green" if active else "red"
+        for dot in self.dots:
+            self.canvas.itemconfig(dot, fill=color)
         self.root.update()
 
 class TooltipMarker:
@@ -122,7 +153,7 @@ def pre_rotate_templates(template):
 
 def run_app():
     marker = TooltipMarker()
-    raw_template = cv2.imread('target.png', cv2.IMREAD_GRAYSCALE)
+    raw_template = cv2.imread(TARGET_PATH, cv2.IMREAD_GRAYSCALE)
     if raw_template is None: return
     
     template_cache = pre_rotate_templates(raw_template)
@@ -165,8 +196,13 @@ def run_app():
         # Initialize the scan area visualizer (from previous step)
         area_visual = ScanAreaOverlay(search_area, scale)
         
-        while True:
-            area_visual.update()
+        while not should_exit:
+            area_visual.update(is_active)
+            if not is_active:
+                marker.hide()
+                time.sleep(0.1)
+                continue
+
             # Capture only the square
             sct_img = sct.grab(search_area)
             img = np.array(sct_img)
@@ -241,6 +277,15 @@ def run_app():
             else:
                 target_start_time = None
                 marker.hide()
+
+    # Clean up
+    area_visual.root.destroy()
+    marker.root.destroy()
+
+def cleanup():
+    keyboard.unhook_all()
+
+atexit.register(cleanup)
 
 if __name__ == "__main__":
     run_app()
