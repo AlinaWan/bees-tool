@@ -1,13 +1,14 @@
+import atexit
+import ctypes
 import os
+import time
+import tkinter as tk
+
 import cv2
+import keyboard
 import numpy as np
 from ahk import AHK
 from mss import mss
-import tkinter as tk
-import ctypes
-import time
-import keyboard
-import atexit
 
 ahk = AHK()
 user32 = ctypes.windll.user32
@@ -25,14 +26,14 @@ DOWNSCALE_FACTOR = 0.5                        # 0.5 = 50% size (4x faster proces
 BOUNDARY_MARGIN = 100                         # Px allowed outside ROI before failing
 MINIGAME_TIMEOUT_MS = 2000                    # Time a slider hasn't appeared to be considered not in minigame
 
-# --- Auto Cast ---
-AUTO_CAST_ENABLED = True                      # Enable to auto cast module
-AUTO_CAST_TOLERANCE = 5                       # Tolerance for the optimized search
-AUTO_CAST_CONFIDENCE = 0.90                   # Confidence for calibration
+# --- Meter Automation ---
+AUTO_RELEASE_ENABLED = True                   # Enable the auto release module
+AUTO_RELEASE_TOLERANCE = 5                    # Tolerance for the optimized search
+AUTO_RELEASE_CONFIDENCE = 0.90                # Confidence for calibration
 SEARCH_DEPTH = 20                             # Define how deep the search range is for the top of the meter
 
 # --- Auto Routine ---
-AUTO_ROUTINE_ENABLED = True                   # Enable the subroutine module (forces Auto Cast)
+AUTO_ROUTINE_ENABLED = False                   # Enable the subroutine module (forces Auto Release)
 AUTO_ROUTINE_PATTERN = (                      # Walk pattern
     ['w','w','w',
      'd','d','d',
@@ -49,7 +50,7 @@ EXIT_KEY = 'shift+esc'
 # Template
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TARGET_PATH = os.path.join(SCRIPT_DIR, 'target.png')
-AUTO_CAST_IMAGE_PATH = os.path.join(SCRIPT_DIR, 'cast.png')
+METER_IMAGE_PATH = os.path.join(SCRIPT_DIR, 'meter.png')
 
 #########################
 
@@ -58,18 +59,18 @@ is_active = False
 should_exit = False
 last_slider_time = 0
 
-cast_calibrated = False
-cast_pixels = []
-cast_colors = []
+meter_calibrated = False
+meter_pixels = []
+meter_colors = []
 last_slider_time = time.perf_counter()
 
 routine_index = 0
 routine_state = "idle"
 routine_lmb_down_time = 0
 
-# Implicitly force AUTO_CAST if AUTO_ROUTINE
+# Implicitly force AUTO_RELEASE if AUTO_ROUTINE
 if AUTO_ROUTINE_ENABLED:
-    AUTO_CAST_ENABLED = True
+    AUTO_RELEASE_ENABLED = True
 
 def toggle_logic():
     global is_active
@@ -115,9 +116,9 @@ class ScanAreaOverlay:
             dot = self.canvas.create_rectangle(px-size, py-size, px+size, py+size, fill="red", outline="")
             self.dots.append(dot)
 
-        # --- AUTO CAST VISUAL ---
-        self.cast_left_bar = None
-        self.cast_right_bar = None
+        # --- AUTO RELEASE VISUAL ---
+        self.release_left_bar = None
+        self.release_right_bar = None
         # ------------------------
 
     def update(self, active):
@@ -126,22 +127,21 @@ class ScanAreaOverlay:
             self.canvas.itemconfig(dot, fill=color)
         self.root.update()
 
-    # --- AUTO CAST VISUAL ---
-    def draw_cast_bars(self, x, y):
-        if self.cast_left_bar:
-            self.canvas.delete(self.cast_left_bar)
-            self.canvas.delete(self.cast_right_bar)
-
+    # --- AUTO RELEASE VISUAL ---
+    def draw_release_bars(self, x, y):
+        if self.release_left_bar:
+            self.canvas.delete(self.release_left_bar)
+            self.canvas.delete(self.release_right_bar)
         size = 10
         gap = 10
 
-        self.cast_left_bar = self.canvas.create_rectangle(
+        self.release_left_bar = self.canvas.create_rectangle(
             x-gap-size, y-1,
             x-gap, y+1,
             fill="yellow", outline=""
         )
 
-        self.cast_right_bar = self.canvas.create_rectangle(
+        self.release_right_bar = self.canvas.create_rectangle(
             x+gap, y-1,
             x+gap+size, y+1,
             fill="yellow", outline=""
@@ -210,7 +210,7 @@ def pre_rotate_templates(template):
     return rotated_cache
 
 def run_app():
-    global cast_calibrated, cast_pixels, cast_colors, last_slider_time
+    global meter_calibrated, meter_pixels, meter_colors, last_slider_time
     global routine_index, routine_state, routine_lmb_down_time
 
     marker = TooltipMarker()
@@ -220,12 +220,12 @@ def run_app():
     
     template_cache = pre_rotate_templates(raw_template)
 
-    # --- AUTO CAST ---
-    cast_template = cv2.imread(AUTO_CAST_IMAGE_PATH)
-    if cast_template is not None:
-        cast_template_gray = cv2.cvtColor(cast_template, cv2.COLOR_BGR2GRAY)
+    # --- AUTO RELEASE ---
+    meter_template = cv2.imread(METER_IMAGE_PATH)
+    if meter_template is not None:
+        meter_template_gray = cv2.cvtColor(meter_template, cv2.COLOR_BGR2GRAY)
     else:
-        cast_template_gray = None
+        meter_template_gray = None
     # -----------------
 
     ahk.run_script("CoordMode, Mouse, Screen")
@@ -264,8 +264,8 @@ def run_app():
 
             now = time.perf_counter()
 
-            # --- AUTO CAST CALIBRATION ---
-            if AUTO_CAST_ENABLED and not cast_calibrated and cast_template_gray is not None:
+            # --- AUTO RELEASE CALIBRATION ---
+            if AUTO_RELEASE_ENABLED and not meter_calibrated and meter_template_gray is not None:
                 right_half = {
                     "top": 0,
                     "left": SCREEN_WIDTH//2,
@@ -276,46 +276,46 @@ def run_app():
                 frame = np.array(sct.grab(right_half))
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
 
-                res = cv2.matchTemplate(gray, cast_template_gray, cv2.TM_CCOEFF_NORMED)
+                res = cv2.matchTemplate(gray, meter_template_gray, cv2.TM_CCOEFF_NORMED)
                 _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
-                if max_val >= AUTO_CAST_CONFIDENCE:
-                        h, w = cast_template_gray.shape
+                if max_val >= AUTO_RELEASE_CONFIDENCE:
+                        h, w = meter_template_gray.shape
                         top_y = max_loc[1]
                         center_x = max_loc[0] + w//2
                         start_x = center_x - 2
                 
-                        cast_pixels = []
-                        cast_colors = []
+                        meter_pixels = []
+                        meter_colors = []
                         
                         for i in range(4):
                             px = start_x + i
                             py = top_y
                             
                             screen_x = right_half["left"] + px
-                            b, g, r = cast_template[py - max_loc[1], px - max_loc[0]][:3]
+                            b, g, r = meter_template[py - max_loc[1], px - max_loc[0]][:3]
                             
-                            cast_pixels.append(screen_x)
-                            cast_colors.append((int(b), int(g), int(r)))
+                            meter_pixels.append(screen_x)
+                            meter_colors.append((int(b), int(g), int(r)))
                             
-                        cast_target_y = top_y 
-                        cast_calibrated = True
+                        meter_target_y = top_y 
+                        meter_calibrated = True
             # -------------------------------
 
-            # --- AUTO CAST CHECK ---
+            # --- AUTO RELEASE CHECK ---
             time_since_last_slider = (now - last_slider_time) * 1000
 
             if (
-                AUTO_CAST_ENABLED
-                and cast_calibrated
+                AUTO_RELEASE_ENABLED
+                and meter_calibrated
                 and time_since_last_slider > MINIGAME_TIMEOUT_MS
-                and len(cast_pixels) == 4
+                and len(meter_pixels) == 4
             ):
                 
                 check_region = {
-                    "top": cast_target_y,
-                    "left": min(cast_pixels),
-                    "width": (max(cast_pixels) - min(cast_pixels)) + 1,
+                    "top": meter_target_y,
+                    "left": min(meter_pixels),
+                    "width": (max(meter_pixels) - min(meter_pixels)) + 1,
                     "height": SEARCH_DEPTH
                 }
                 
@@ -324,28 +324,28 @@ def run_app():
                 
                 matches_found = 0
                 for i in range(4):
-                    target_color = np.array(cast_colors[i], dtype=np.int16)
-                    column_idx = cast_pixels[i] - check_region["left"]
+                    target_color = np.array(meter_colors[i], dtype=np.int16)
+                    column_idx = meter_pixels[i] - check_region["left"]
                     
                     if 0 <= column_idx < roi_img.shape[1]:
                         vertical_strip = roi_img[:, column_idx].astype(np.int16)
                         diff = np.abs(vertical_strip - target_color)
-                        if np.any(np.all(diff <= AUTO_CAST_TOLERANCE, axis=1)):
+                        if np.any(np.all(diff <= AUTO_RELEASE_TOLERANCE, axis=1)):
                             matches_found += 1
 
                 if matches_found == 4 and is_active:
                     ahk.click(button='left', direction='up')
                     time.sleep(0.05)
 
-                cx = cast_pixels[0]
-                cy = cast_target_y
+                cx = meter_pixels[0]
+                cy = meter_target_y
                 local_x = cx - search_left
                 local_y = cy - search_top
                 vis_x = int(local_x / scale)
                 vis_y = int(local_y / scale)
                 
                 if 0 <= vis_x <= area_visual.canvas.winfo_width() and 0 <= vis_y <= area_visual.canvas.winfo_height():
-                    area_visual.draw_cast_bars(vis_x, vis_y)
+                    area_visual.draw_release_bars(vis_x, vis_y)
             # -----------------------
 
             # --- AUTO_ROUTINE ---

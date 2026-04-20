@@ -17,13 +17,11 @@ By maintaining a rigorous state of *interrogatio visualis*, the framework ensure
 
 ## 📦 Requirements
 
-Execution of this binary requires a Python 3.10+ runtime environment equipped with the following libraries:
+Execution of this binary requires a Python 3.10+ runtime environment equipped with the necessary dependencies:
 
-  * **OpenCV (`cv2`)** – For bitmap analysis and template matching.
-  * **NumPy** – For matrix manipulation and trigonometric vector calculation.
-  * **PyAHK (`ahk`)** – To interface with the AutoHotkey v1.1 execution engine.
-  * **python-mss** – For ultra-fast, non-blocking screen capture.
-  * **Tkinter** – For the overlay-based telemetry system.
+```bash
+pip install -r requirements.txt
+```
 
 -----
 
@@ -43,19 +41,19 @@ Adjust the constants within the header of the script to align with your hardware
 | `BOUNDARY_MARGIN` | Pixel buffer allowing the drag destination to exist outside the ROI before invalidation. |
 | `MINIGAME_TIMEOUT_MS` | Duration a slider has not been detected before the system infers the minigame has ended. |
 
-### Auto Cast
+### Meter Automation
 | Constant | Function |
 | :--- | :--- |
-| `AUTO_CAST_ENABLED` | Toggles the calibration and execution of the automated cast-release system. |
-| `AUTO_CAST_TOLERANCE` | The allowable RGB variance when identifying the green bar signature. |
-| `AUTO_CAST_CONFIDENCE` | The normalized correlation threshold required for cast-meter template calibration. |
-| `SEARCH_DEPTH` | The vertical pixel search range used to detect the rising cast meter. |
+| `AUTO_RELEASE_ENABLED` | Toggles the calibration and execution of the automated meter-release system. |
+| `AUTO_RELEASE_TOLERANCE` | The allowable RGB variance when identifying the green bar signature. |
+| `AUTO_RELEASE_CONFIDENCE` | The normalized correlation threshold required for meter template calibration. |
+| `SEARCH_DEPTH` | The vertical pixel search range used to detect the rising meter. |
 
-### Auto Routine
+### Routine Automation
 | Constant | Function |
 | :--- | :--- |
-| `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-cast routine (implicitly forces `AUTO_CAST_ENABLED`). |
-| `AUTO_ROUTINE_PATTERN` | The ordered movement sequence executed between cast attempts. |
+| `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-swing routine (implicitly forces `AUTO_RELEASE_ENABLED`). |
+| `AUTO_ROUTINE_PATTERN` | The ordered movement sequence executed between swing attempts. |
 | `AUTO_ROUTINE_WALK_TIME_MS` | Duration each movement key is held during routine traversal. |
 | `AUTO_ROUTINE_LMB_TIMEOUT_MS` | Maximum duration the routine will hold LMB awaiting a minigame before aborting the current cycle. |
 
@@ -93,18 +91,17 @@ The script provides real-time visual feedback via a transparent Tkinter canvas. 
 * **Lime Circle**: Target identified; currently accumulating confidence.
 * **Cyan Circle**: Target locked; lock duration threshold exceeded, interaction imminent.
 * **Red Circle**: Target identified, but the calculated vector would exceed the Boundary Margin. Action suppressed.
-* **Yellow Horizontal Bars**: Rendered only after successful calibration. These indicate the precise Y-axis and width where the tool is monitoring the peak of the cast meter.
+* **Yellow Horizontal Bars**: Rendered only after successful calibration. These indicate the precise Y-axis and width where the tool is monitoring the peak of the meter.
 
 -----
 
-## ⚖️ Auto Cast & Observational Calibration
+## ⚖️ Meter Automation & Observational Calibration
 
-The **Auto Cast** module is a specialized sub-system designed for the terminal phase of the interaction—the net release. Unlike conventional region-lock approaches where coordinate data is predefined, this system utilizes **Observationally Inferred Calibration**.
+The **Auto Release** module is a specialized sub-system designed for the terminal phase of the interaction—the net release. Unlike conventional region-lock approaches where coordinate data is predefined, this system utilizes **Observationally Inferred Calibration**.
 
 ### The Calibration Phase
 
-Upon initialization, the tool remains in a searching state for the cast interface (defined by `cast.png`). Rather than requiring static coordinates, the script performs a one-time, high-fidelity template match across the right hemisphere of the display.
-
+Upon initialization, the tool remains in a searching state for the meter interface (defined by `meter.png`). Rather than requiring static coordinates, the script performs a one-time, high-fidelity template match across the right hemisphere of the display.
 Once the signature is identified, the system silently extracts the **spatial geometry and chromatic profile** of the interaction bar. It captures the exact Y-coordinate and a 4-pixel horizontal color sample to serve as a persistent reference.
 
 ### Optimized Execution Logic
@@ -115,17 +112,17 @@ The moment the rising green bar's color signature enters the performance-optimiz
 
 ## 🗺️ Auto Routine & Autonomous Traversal
 
-The **Auto Routine** module extends the system beyond reactive execution into **structured environmental traversal**. Rather than remaining stationary between interactions, the tool performs a controlled movement cycle designed to periodically reposition the player and initiate new cast attempts.
+The **Auto Routine** module extends the system beyond reactive execution into **structured environmental traversal**. Rather than remaining stationary between interactions, the tool performs a controlled movement cycle designed to periodically reposition the player and initiate new swing attempts.
 
 ### The Traversal Pattern
 
 When enabled, the routine follows a deterministic **movement sequence** defined by `AUTO_ROUTINE_PATTERN`. Each vector in the pattern is applied sequentially, with the corresponding key held for `AUTO_ROUTINE_WALK_TIME_MS` before advancing to the next step. The pattern loops indefinitely, forming a continuous traversal circuit.
 
-### Autonomous Casting Cycle
+### Autonomous Swinging Cycle
 
-After completing each movement step, the routine initiates a new cast attempt by issuing a sustained `button='left', direction='down'` command. This action hands control to the **Auto Cast** subsystem, which performs calibration if necessary and manages the release timing during the minigame.
+After completing each movement step, the routine initiates a new swing attempt by issuing a sustained `button='left', direction='down'` command. This action hands control to the **Auto Release** subsystem, which performs calibration if necessary and manages the release timing during the swing.
 
-If no minigame is detected within the interval defined by `AUTO_ROUTINE_LMB_TIMEOUT_MS`, the routine concludes the attempt and resumes traversal with the next movement vector. This cyclical process creates a fully autonomous loop of **movement, casting, and execution**, allowing the system to operate continuously without manual repositioning.
+If no minigame is detected within the interval defined by `AUTO_ROUTINE_LMB_TIMEOUT_MS`, the routine concludes the attempt and resumes traversal with the next movement vector. This cyclical process creates a fully autonomous loop of **movement, swinging, and execution**, allowing the system to operate continuously without manual repositioning.
 
 -----
 
@@ -151,12 +148,12 @@ Prior to the primary interaction, the tool performs a 1-pixel relative displacem
 
 ## ⚠️ Notes & Warnings
 
-  * **Template Fidelity**: The accuracy of `target.png` is paramount. It should be cropped tightly to the entity’s core features with minimal background interference.
-  * **Resolution Sensitivity**: The script calculates coordinates based on absolute screen metrics. Discrepancies between monitor scaling and game resolution must be accounted for in the `DOWNSCALE_FACTOR`.
-  * **CPU Load**: High `ROTATION_STEP` values (e.g., < 15°) combined with high resolutions may induce processing latency, potentially exceeding the `LOCK_DURATION_MS` window.
+  * **Template Fidelity**: Templates based on a 1920x1080 resolution are provided as a baseline, but users may need to capture custom templates if their display configuration differs significantly. Although manual pixel coordinate entry is not required, the tool's performance is highly dependent on the quality of the template matches.
 
 -----
 
 ## 📄 License
 
 Bees Tool is provided as-is under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Riri

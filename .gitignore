@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Visual Studio
+.vs/
+*.vspscc
+*.user
+*.userosscache
+*.suo
+*.vssscc
+*.dbmdl
+*.sln.docstates
+
+# CodeRush
+.cr/
