@@ -77,6 +77,14 @@ The script provides real-time visual feedback via a transparent Tkinter canvas. 
 
 -----
 
+## 🛰️ Nomenclature & Phonetics
+
+To maintain alignment with the architectural vision of the framework, the designation **Bees Tool** is to be phonetically rendered as **/biːs/** (*rhyming with "fleece" or "geese"*).
+
+The voiced alveolar fricative **/biːz/** (as in the Hymenoptera insect) is considered a lexical deviation and will not be tolerated in formal interrogation or community discourse. Proper sibilance is a prerequisite for tool competency.
+
+-----
+
 ## 🧭 Advanced Mechanics
 
 ### Rotational Memory
