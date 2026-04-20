@@ -47,6 +47,7 @@ SCREEN_HEIGHT = user32.GetSystemMetrics(1)
 # Global State
 is_active = False
 should_exit = False
+last_slider_time = 0
 
 # --- AUTO CAST STATE ---
 cast_calibrated = False
@@ -283,12 +284,12 @@ def run_app():
             # -------------------------------
 
             # --- AUTO CAST CHECK ---
-            not_in_minigame = (now - last_slider_time) * 1000 > MINIGAME_TIMEOUT_MS
+            time_since_last_slider = (now - last_slider_time) * 1000
 
             if (
                 AUTO_CAST_ENABLED
                 and cast_calibrated
-                and not_in_minigame
+                and time_since_last_slider > MINIGAME_TIMEOUT_MS
                 and len(cast_pixels) == 4
             ):
                 
