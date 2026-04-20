@@ -38,6 +38,7 @@ Adjust the constants within the header of the script to align with your hardware
 | `DOWNSCALE_FACTOR` | Scaling ratio for the search domain; reduces CPU overhead by `O(n^2)`. |
 | `DRAG_STEP` | The scalar magnitude of the post-click mouse displacement. |
 | `ROTATION_STEP` | The angular increment for pre-generated template rotations. |
+| `BOUNDARY_MARGIN` | The pixel-buffer allowed for the drag destination to exist outside the ROI before the action is invalidated. |
 
 ### Installation
 
@@ -62,7 +63,7 @@ Adjust the constants within the header of the script to align with your hardware
 
 ### The "Lock" Mechanism
 
-Unlike primitive pixel-searchers, Bees Tool requires a **Stable Identification State**. If a target is detected but lost within the 10ms window, the interaction is aborted. This ensures that the tool does not "flick" to transient artifacts or UI debris.
+Unlike primitive pixel-searchers, Bees Tool requires a **Stable Identification State**. Interaction occurs only when two conditions are met: **Temporal Stability** (the target persists for `LOCK_DURATION_MS`) and **Spatial Validity** (the target's orientation does not project a drag path outside the allowed `BOUNDARY_MARGIN`). This ensures that the tool does not "flick" to transient artifacts or UI debris.
 
 ### Telemetry Overlay
 
@@ -71,7 +72,8 @@ The script provides real-time visual feedback via a transparent Tkinter canvas. 
 * **Green ROI Points**: Tool is **Active/ON**. The system is actively interrogating the search domain.
 * **Red ROI Points**: Tool is **Inactive/OFF**. Logic is suspended, though the overlay remains initialized.
 * **Lime Circle**: Target identified; currently accumulating confidence.
-* **Cyan Circle**: Target locked; confirmation threshold exceeded, interaction imminent.
+* **Cyan Circle**: Target locked; lock duration threshold exceeded, interaction imminent.
+* **Red Circle**: Target identified, but the calculated vector would exceed the Boundary Margin. Action suppressed.
 
 -----
 
