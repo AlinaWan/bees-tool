@@ -23,7 +23,7 @@ BOUNDARY_MARGIN = 100 # Px allowed outside ROI before failing
 MINIGAME_TIMEOUT_MS = 500
 AUTO_CAST_ENABLED = True
 AUTO_CAST_TOLERANCE = 5
-AUTO_CAST_CONFIDENCE = 0.80
+AUTO_CAST_CONFIDENCE = 0.90
 SEARCH_DEPTH = 20 # Define how deep the search range is
 
 # Hotkeys
