@@ -39,13 +39,17 @@ Adjust the constants within the header of the script to align with your hardware
 | `DRAG_STEP` | The scalar magnitude of the post-click mouse displacement. |
 | `ROTATION_STEP` | The angular increment for pre-generated template rotations. |
 | `BOUNDARY_MARGIN` | The pixel-buffer allowed for the drag destination to exist outside the ROI before the action is invalidated. |
+| `MINIGAME_TIMEOUT_MS` | The period a slider has not been detected for to consider the minigame over. |
+| `AUTO_CAST_ENABLED` | Toggles the calibration and execution of the cast-release logic. |
+| `AUTO_CAST_TOLERANCE`	| The allowable variance in RGB values when detecting the green bar signature. |
+| `SEARCH_DEPTH` | The vertical pixel-range used to catch the rising meter. |
 
 ### Installation
 
 1.  Ensure `target.png` (the visual signature of your entity) is present in the root directory.
 2.  Initialize the script via terminal:
     ```bash
-    python app.py
+    python app.pyw
     ```
 
 -----
@@ -74,6 +78,23 @@ The script provides real-time visual feedback via a transparent Tkinter canvas. 
 * **Lime Circle**: Target identified; currently accumulating confidence.
 * **Cyan Circle**: Target locked; lock duration threshold exceeded, interaction imminent.
 * **Red Circle**: Target identified, but the calculated vector would exceed the Boundary Margin. Action suppressed.
+* **Yellow Horizontal Bars**: Rendered only after successful calibration. These indicate the precise Y-axis and width where the tool is monitoring the peak of the cast meter.
+
+-----
+
+## ⚖️ Auto Cast & Observational Calibration
+
+The **Auto Cast** module is a specialized sub-system designed for the terminal phase of the interaction—the net release. Unlike conventional region-lock approaches where coordinate data is predefined, this system utilizes **Observationally Inferred Calibration**.
+
+### The Calibration Phase
+
+Upon initialization, the tool remains in a searching state for the cast interface (defined by `cast.png`). Rather than requiring static coordinates, the script performs a one-time, high-fidelity template match across the right hemisphere of the display.
+
+Once the signature is identified, the system silently extracts the **spatial geometry and chromatic profile** of the interaction bar. It captures the exact Y-coordinate and a 4-pixel horizontal color sample to serve as a persistent reference.
+
+### Optimized Execution Logic
+
+The moment the rising green bar's color signature enters the performance-optimized interception zone, the tool issues an immediate `button='left', direction='up'` command, executing the swing at the apex of the meter.
 
 -----
 
