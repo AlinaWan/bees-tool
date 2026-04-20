@@ -15,7 +15,7 @@ SCREEN_WIDTH = user32.GetSystemMetrics(0)
 SCREEN_HEIGHT = user32.GetSystemMetrics(1)
 
 ##### CONFIGURATION #####
-# Automation
+# --- Minigame Automation ---
 CONFIDENCE_THRESHOLD = 0.82                   # Confidence to track
 ROTATION_STEP = 45                            # Rotation steps
 DRAG_STEP = int(SCREEN_HEIGHT * (500 / 1080)) # Drag step to drag based on the screen height
@@ -23,13 +23,24 @@ COOLDOWN_MS = 100                             # Cooldown
 LOCK_DURATION_MS = 20                         # How long the object must persist to lock
 DOWNSCALE_FACTOR = 0.5                        # 0.5 = 50% size (4x faster processing)
 BOUNDARY_MARGIN = 100                         # Px allowed outside ROI before failing
+MINIGAME_TIMEOUT_MS = 2000                    # Time a slider hasn't appeared to be considered not in minigame
 
-# Auto Cast
-AUTO_CAST_ENABLED = True
-MINIGAME_TIMEOUT_MS = 500
-AUTO_CAST_TOLERANCE = 5
-AUTO_CAST_CONFIDENCE = 0.90
-SEARCH_DEPTH = 20 # Define how deep the search range is
+# --- Auto Cast ---
+AUTO_CAST_ENABLED = True                      # Enable to auto cast module
+AUTO_CAST_TOLERANCE = 5                       # Tolerance for the optimized search
+AUTO_CAST_CONFIDENCE = 0.90                   # Confidence for calibration
+SEARCH_DEPTH = 20                             # Define how deep the search range is for the top of the meter
+
+# --- Auto Routine ---
+AUTO_ROUTINE_ENABLED = True                   # Enable the subroutine module (forces Auto Cast)
+AUTO_ROUTINE_PATTERN = (                      # Walk pattern
+    ['w','w','w',
+     'd','d','d',
+     's','s','s',
+     'a','a','a']
+)
+AUTO_ROUTINE_WALK_TIME_MS = 250               # Time to hold each walk key
+AUTO_ROUTINE_LMB_TIMEOUT_MS = 3000            # Time a minigame hasn't appeared to give up this cycle
 
 # Hotkeys
 TOGGLE_KEY = 'f6'
@@ -52,9 +63,22 @@ cast_pixels = []
 cast_colors = []
 last_slider_time = time.perf_counter()
 
+routine_index = 0
+routine_state = "idle"
+routine_lmb_down_time = 0
+
+# Implicitly force AUTO_CAST if AUTO_ROUTINE
+if AUTO_ROUTINE_ENABLED:
+    AUTO_CAST_ENABLED = True
+
 def toggle_logic():
     global is_active
+    global routine_index, routine_state
     is_active = not is_active
+
+    if is_active:
+        routine_index = 0
+        routine_state = "idle"
 
 def exit_logic():
     global should_exit
@@ -187,6 +211,7 @@ def pre_rotate_templates(template):
 
 def run_app():
     global cast_calibrated, cast_pixels, cast_colors, last_slider_time
+    global routine_index, routine_state, routine_lmb_down_time
 
     marker = TooltipMarker()
 
@@ -260,21 +285,19 @@ def run_app():
                         center_x = max_loc[0] + w//2
                         start_x = center_x - 2
                 
-                        cast_pixels = [] # We'll store the X coordinates of the 4 strips
-                        cast_colors = [] # We'll store the target colors from the template
+                        cast_pixels = []
+                        cast_colors = []
                         
                         for i in range(4):
                             px = start_x + i
                             py = top_y
                             
-                            # Save the screen X coordinate and the template color
                             screen_x = right_half["left"] + px
                             b, g, r = cast_template[py - max_loc[1], px - max_loc[0]][:3]
                             
-                            cast_pixels.append(screen_x) # Only need X for strips
+                            cast_pixels.append(screen_x)
                             cast_colors.append((int(b), int(g), int(r)))
                             
-                        # Store the Y coordinate where the bar should be
                         cast_target_y = top_y 
                         cast_calibrated = True
             # -------------------------------
@@ -289,7 +312,6 @@ def run_app():
                 and len(cast_pixels) == 4
             ):
                 
-                # Grab a small rectangle covering all 4 pixels horizontally, and SEARCH_DEPTH vertically
                 check_region = {
                     "top": cast_target_y,
                     "left": min(cast_pixels),
@@ -297,23 +319,17 @@ def run_app():
                     "height": SEARCH_DEPTH
                 }
                 
-                # One single grab is much faster than 4 separate ones
                 roi_capture = sct.grab(check_region)
-                roi_img = np.array(roi_capture)[:, :, :3] # Get BGR pixels
+                roi_img = np.array(roi_capture)[:, :, :3]
                 
                 matches_found = 0
                 for i in range(4):
                     target_color = np.array(cast_colors[i], dtype=np.int16)
-                    # Find which column in our small ROI corresponds to the saved screen X
                     column_idx = cast_pixels[i] - check_region["left"]
                     
-                    # Ensure index is within the grabbed ROI
                     if 0 <= column_idx < roi_img.shape[1]:
                         vertical_strip = roi_img[:, column_idx].astype(np.int16)
-                        
-                        # Calculate color difference for the whole strip at once
                         diff = np.abs(vertical_strip - target_color)
-                        # Check if ANY pixel in this column matches the color within tolerance
                         if np.any(np.all(diff <= AUTO_CAST_TOLERANCE, axis=1)):
                             matches_found += 1
 
@@ -321,7 +337,6 @@ def run_app():
                     ahk.click(button='left', direction='up')
                     time.sleep(0.05)
 
-                # Update the visual overlay using the first pixel's position
                 cx = cast_pixels[0]
                 cy = cast_target_y
                 local_x = cx - search_left
@@ -332,6 +347,36 @@ def run_app():
                 if 0 <= vis_x <= area_visual.canvas.winfo_width() and 0 <= vis_y <= area_visual.canvas.winfo_height():
                     area_visual.draw_cast_bars(vis_x, vis_y)
             # -----------------------
+
+            # --- AUTO_ROUTINE ---
+            if AUTO_ROUTINE_ENABLED and is_active:
+
+                not_in_minigame = time_since_last_slider > MINIGAME_TIMEOUT_MS
+
+                if routine_state == "idle" and not_in_minigame:
+
+                    key = AUTO_ROUTINE_PATTERN[routine_index]
+
+                    ahk.key_down(key)
+                    time.sleep(AUTO_ROUTINE_WALK_TIME_MS / 1000)
+                    ahk.key_up(key)
+
+                    routine_index = (routine_index + 1) % len(AUTO_ROUTINE_PATTERN)
+
+                    ahk.click(button='left', direction='down')
+                    routine_lmb_down_time = now
+
+                    routine_state = "holding"
+
+                elif routine_state == "holding":
+
+                    if not not_in_minigame:
+                        routine_state = "idle"
+
+                    elif (now - routine_lmb_down_time) * 1000 > AUTO_ROUTINE_LMB_TIMEOUT_MS:
+                        ahk.click(button='left', direction='up')
+                        routine_state = "idle"
+            # --------------------
 
             if not is_active:
                 marker.hide()

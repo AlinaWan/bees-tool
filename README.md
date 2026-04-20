@@ -31,18 +31,33 @@ Execution of this binary requires a Python 3.10+ runtime environment equipped wi
 
 Adjust the constants within the header of the script to align with your hardware's performance profile:
 
+### Minigame Automation
 | Constant | Function |
 | :--- | :--- |
 | `CONFIDENCE_THRESHOLD` | The minimum normalized correlation coefficient (`0.0` to `1.0`) required for a match. |
+| `ROTATION_STEP` | The angular increment used to generate the rotated template cache. |
+| `DRAG_STEP` | The scalar magnitude of the corrective mouse displacement applied after engagement. |
+| `COOLDOWN_MS` | The minimum delay between successive corrective drag actions. |
 | `LOCK_DURATION_MS` | The required temporal persistence (in milliseconds) before the tool engages the target. |
-| `DOWNSCALE_FACTOR` | Scaling ratio for the search domain; reduces CPU overhead by `O(n^2)`. |
-| `DRAG_STEP` | The scalar magnitude of the post-click mouse displacement. |
-| `ROTATION_STEP` | The angular increment for pre-generated template rotations. |
-| `BOUNDARY_MARGIN` | The pixel-buffer allowed for the drag destination to exist outside the ROI before the action is invalidated. |
-| `MINIGAME_TIMEOUT_MS` | The period a slider has not been detected for to consider the minigame over. |
-| `AUTO_CAST_ENABLED` | Toggles the calibration and execution of the cast-release logic. |
-| `AUTO_CAST_TOLERANCE`	| The allowable variance in RGB values when detecting the green bar signature. |
-| `SEARCH_DEPTH` | The vertical pixel-range used to catch the rising meter. |
+| `DOWNSCALE_FACTOR` | Scaling ratio applied to the search domain to reduce computational load (`O(n²)` reduction). |
+| `BOUNDARY_MARGIN` | Pixel buffer allowing the drag destination to exist outside the ROI before invalidation. |
+| `MINIGAME_TIMEOUT_MS` | Duration a slider has not been detected before the system infers the minigame has ended. |
+
+### Auto Cast
+| Constant | Function |
+| :--- | :--- |
+| `AUTO_CAST_ENABLED` | Toggles the calibration and execution of the automated cast-release system. |
+| `AUTO_CAST_TOLERANCE` | The allowable RGB variance when identifying the green bar signature. |
+| `AUTO_CAST_CONFIDENCE` | The normalized correlation threshold required for cast-meter template calibration. |
+| `SEARCH_DEPTH` | The vertical pixel search range used to detect the rising cast meter. |
+
+### Auto Routine
+| Constant | Function |
+| :--- | :--- |
+| `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-cast routine (implicitly forces `AUTO_CAST_ENABLED`). |
+| `AUTO_ROUTINE_PATTERN` | The ordered movement sequence executed between cast attempts. |
+| `AUTO_ROUTINE_WALK_TIME_MS` | Duration each movement key is held during routine traversal. |
+| `AUTO_ROUTINE_LMB_TIMEOUT_MS` | Maximum duration the routine will hold LMB awaiting a minigame before aborting the current cycle. |
 
 ### Installation
 
@@ -95,6 +110,22 @@ Once the signature is identified, the system silently extracts the **spatial geo
 ### Optimized Execution Logic
 
 The moment the rising green bar's color signature enters the performance-optimized interception zone, the tool issues an immediate `button='left', direction='up'` command, executing the swing at the apex of the meter.
+
+-----
+
+## 🗺️ Auto Routine & Autonomous Traversal
+
+The **Auto Routine** module extends the system beyond reactive execution into **structured environmental traversal**. Rather than remaining stationary between interactions, the tool performs a controlled movement cycle designed to periodically reposition the player and initiate new cast attempts.
+
+### The Traversal Pattern
+
+When enabled, the routine follows a deterministic **movement sequence** defined by `AUTO_ROUTINE_PATTERN`. Each vector in the pattern is applied sequentially, with the corresponding key held for `AUTO_ROUTINE_WALK_TIME_MS` before advancing to the next step. The pattern loops indefinitely, forming a continuous traversal circuit.
+
+### Autonomous Casting Cycle
+
+After completing each movement step, the routine initiates a new cast attempt by issuing a sustained `button='left', direction='down'` command. This action hands control to the **Auto Cast** subsystem, which performs calibration if necessary and manages the release timing during the minigame.
+
+If no minigame is detected within the interval defined by `AUTO_ROUTINE_LMB_TIMEOUT_MS`, the routine concludes the attempt and resumes traversal with the next movement vector. This cyclical process creates a fully autonomous loop of **movement, casting, and execution**, allowing the system to operate continuously without manual repositioning.
 
 -----
 
