@@ -13,6 +13,7 @@ import time
 import tkinter as tk
 from datetime import datetime, timezone
 from tkinter import filedialog
+from typing import final as sealed
 
 import cv2
 import keyboard
@@ -86,11 +87,14 @@ def build_current_config():
             "author": "",
             "version": "1.0.0",
             "created": datetime.now(timezone.utc).isoformat(),
-            "description":
-                "Bees Tool configuration schema 1.0. "
-                "You can write values as expressions based on screen dimensions using the variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., \"drag_step\": \"SCREEN_HEIGHT / 2\"). "
-                "Please keep in mind that exporting the configuration will not preserve expressions or metadata fields, "
-                "so it is recommended to use the Edit Config button to modify and save your existing configuration."
+            "description": [
+                "Bees Tool configuration schema 1.0.",
+                "You can write values as expressions based on screen dimensions using the",
+                "variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., SCREEN_HEIGHT / 2).",
+                "Please keep in mind that exporting the configuration will not preserve",
+                "expressions or metadata fields, so it is recommended to use the Edit Config",
+                "button to modify and save your existing configuration."
+            ]
         },
         "slider_settings": {
             "confidence_threshold": CONFIDENCE_THRESHOLD,
@@ -195,6 +199,7 @@ def exit_logic():
 keyboard.add_hotkey(TOGGLE_KEY, toggle_logic, suppress=True)
 keyboard.add_hotkey(EXIT_KEY, exit_logic, suppress=True)
 
+@sealed
 class ScanAreaOverlay:
     """Creates a persistent overlay showing the scan boundaries and 8 markers."""
     def __init__(self, area, scale):
@@ -254,6 +259,7 @@ class ScanAreaOverlay:
         )
     # ------------------------
 
+@sealed
 class TooltipMarker:
     def __init__(self):
         self.root = tk.Tk()
@@ -305,6 +311,7 @@ class TooltipMarker:
         try: self.root.update()
         except: pass
 
+@sealed
 class MenuOverlay:
     def __init__(self, load_callback, edit_callback, save_callback):
         self.root = tk.Tk()
