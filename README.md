@@ -49,6 +49,7 @@ Adjust the constants within the header of the script to align with your hardware
 ### Meter Automation (Swing Release)
 <details>
   <summary>Click to view</summary>
+  
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_RELEASE_ENABLED` | Toggles the calibration and execution of the automated meter-release system. |
@@ -61,6 +62,7 @@ Adjust the constants within the header of the script to align with your hardware
 ### Routine Automation (Traversal & Swing Execution)
 <details>
   <summary>Click to view</summary>
+  
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-swing routine (implicitly forces `AUTO_RELEASE_ENABLED`). |
