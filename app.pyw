@@ -21,7 +21,7 @@ CONFIDENCE_THRESHOLD = 0.82                   # Confidence to track
 ROTATION_STEP = 45                            # Rotation steps
 DRAG_STEP = int(SCREEN_HEIGHT * (500 / 1080)) # Drag step to drag based on the screen height
 COOLDOWN_MS = 100                             # Cooldown
-LOCK_DURATION_MS = 20                         # How long the object must persist to lock
+LOCK_DURATION_MS = 10                         # How long the object must persist to lock
 DOWNSCALE_FACTOR = 0.5                        # 0.5 = 50% size (4x faster processing)
 BOUNDARY_MARGIN = 100                         # Px allowed outside ROI before failing
 MINIGAME_TIMEOUT_MS = 2000                    # Time a slider hasn't appeared to be considered not in minigame
