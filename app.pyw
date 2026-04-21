@@ -8,6 +8,7 @@ import ctypes
 import json
 import os
 import subprocess
+import threading
 import time
 import tkinter as tk
 from datetime import datetime, timezone
@@ -85,7 +86,11 @@ def build_current_config():
             "author": "",
             "version": "1.0.0",
             "created": datetime.now(timezone.utc).isoformat(),
-            "description": "Bees Tool configuration schema 1.0. You can write values as expressions based on screen dimensions using the variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., \"drag_step\": \"SCREEN_HEIGHT / 2\"). Please keep in mind that re-exporting the configuration will not preserve these expressions."
+            "description":
+                "Bees Tool configuration schema 1.0. "
+                "You can write values as expressions based on screen dimensions using the variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., \"drag_step\": \"SCREEN_HEIGHT / 2\"). "
+                "Please keep in mind that exporting the configuration will not preserve expressions or metadata fields, "
+                "so it is recommended to use the Edit Config button to modify and save your existing configuration."
         },
         "slider_settings": {
             "confidence_threshold": CONFIDENCE_THRESHOLD,
@@ -153,6 +158,8 @@ METER_IMAGE_PATH = os.path.join(SCRIPT_DIR, 'meter.png')
 # Global State
 current_config_path = None
 config_data = None
+watcher_thread = None
+watcher_cts = threading.Event()
 
 is_active = False
 should_exit = False
@@ -436,8 +443,75 @@ class MenuOverlay:
         except tk.TclError:
             self.alive = False
 
+# --- FILE WATCHER ---
+def stop_active_watcher():
+    """Cancels the current watching task."""
+    global watcher_thread
+    watcher_cts.set()
+    if watcher_thread:
+        watcher_thread.join(timeout=1.0)
+        watcher_thread = None
+
+def watch_file_changes(file_to_watch):
+    global config_data
+    watcher_cts.clear() # Reset the Token
+    
+    file_to_watch = os.path.abspath(file_to_watch)
+    dir_to_watch = os.path.dirname(file_to_watch)
+    filename_to_watch = os.path.basename(file_to_watch)
+
+    # Win32 Constants
+    FILE_LIST_DIRECTORY = 0x0001
+    FILE_SHARE_READ, FILE_SHARE_WRITE = 0x00000001, 0x00000002
+    OPEN_EXISTING = 3
+    FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
+    FILE_NOTIFY_CHANGE_LAST_WRITE = 0x00000010
+
+    hDir = ctypes.windll.kernel32.CreateFileW(
+        dir_to_watch, FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        None, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, None
+    )
+
+    # Either -1 or 0xFFFFFFFFFFFFFFFF
+    if not hDir or hDir == ctypes.c_void_p(-1).value: # we use c_void_p
+        return
+
+    try:
+        buffer = ctypes.create_string_buffer(1024)
+        bytes_returned = ctypes.c_ulong(0)
+
+        while not watcher_cts.is_set():
+            # This call blocks this background thread until a file in the folder changes
+            success = ctypes.windll.kernel32.ReadDirectoryChangesW(
+                hDir, buffer, ctypes.sizeof(buffer), False,
+                FILE_NOTIFY_CHANGE_LAST_WRITE,
+                ctypes.byref(bytes_returned), None, None
+            )
+
+            if success and not watcher_cts.is_set():
+                # Offset 12 starts the filename in the struct FILE_NOTIFY_INFORMATION
+                file_name_len = int.from_bytes(buffer[8:12], 'little')
+                raw_filename = buffer[12:12+file_name_len].decode('utf-16')
+
+                # IMPORTANT: Check if the modified file is EXACTLY the one we care about
+                if raw_filename.lower() == filename_to_watch.lower():
+                    time.sleep(0.1) 
+                    try:
+                        with open(file_to_watch, "r") as f:
+                            data = json.load(f)
+                        apply_config(data)
+                        print(f"[DEBUG] Propagated changes from: {raw_filename}")
+                    except Exception as e:
+                        print(f"[DEBUG] Live reload error: {e}")
+    finally:
+        # --- DISPOSE PHASE ---
+        ctypes.windll.kernel32.CloseHandle(hDir)
+        print("[DEBUG] Directory Handle Closed.")
+# -------------------
+
 def load_config():
-    global current_config_path, config_data
+    global current_config_path, config_data, watcher_thread
 
     path = filedialog.askopenfilename(
         initialdir=SCRIPT_DIR,
@@ -447,29 +521,47 @@ def load_config():
     if not path:
         return
 
-    with open(path, "r") as f:
-        config_data = json.load(f)
+    # this prevents multiple threads from watching different files at once.
+    stop_active_watcher()
 
-    apply_config(config_data)
-    current_config_path = path
+    try:
+        with open(path, "r") as f:
+            config_data = json.load(f)
+        
+        apply_config(config_data)
+        current_config_path = path
+        print("[DEBUG] Loaded config:", path)
 
-    print("[DEBUG] Loaded config:", path)
+        # this ensures that if the user edits the NEW file in Notepad, it updates live.
+        watcher_thread = threading.Thread(
+            target=watch_file_changes, 
+            args=(current_config_path,), 
+            daemon=True
+        )
+        watcher_thread.start()
+
+    except Exception as e:
+        print(f"[ERROR] Failed to load config: {e}")
 
 def edit_config():
-    global current_config_path, config_data
+    global current_config_path, watcher_thread
     if not current_config_path:
         return
 
-    # subprocess.run waits for the editor to close
-    # Note: This works best with Notepad; VS Code/Sublime might return immediately
-    subprocess.run(['notepad.exe', current_config_path])
-    print("[DEBUG] Opened config:", current_config_path)
-    
-    # Reload the file after user closes Notepad
-    with open(current_config_path, "r") as f:
-        config_data = json.load(f)
-    apply_config(config_data)
-    print("[DEBUG] Reloaded config after edit:", current_config_path)
+    # 1. Open Notepad non-blocking
+    subprocess.Popen(['notepad.exe', current_config_path])
+    print(f"[DEBUG] Opened {current_config_path} in background.")
+
+    # 2. Start the file watcher thread if not already running
+    if watcher_thread is None or not watcher_thread.is_alive():
+        watcher_cts.clear() # Reset the Cancel signal
+        watcher_thread = threading.Thread(
+            target=watch_file_changes, 
+            args=(current_config_path,), 
+            daemon=True
+        )
+        watcher_thread.start()
+        print("[DEBUG] File watcher started.")
 
 def export_config():
     global current_config_path
@@ -768,6 +860,7 @@ def run_app():
     marker.root.destroy()
 
 def cleanup():
+    stop_active_watcher()
     keyboard.unhook_all()
 
 atexit.register(cleanup)
