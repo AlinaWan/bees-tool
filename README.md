@@ -85,7 +85,7 @@ Adjust the constants within the header of the script to align with your hardware
 | Keybind                           | Action                                                                                               |
 | :-------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | <kbd>F6</kbd>                     | **Toggle State**: Switches the tool between Active (Green) and Standby (Red).                        |
-| <kbd>Ctrl</kbd> + <kbd>F10</kbd>  | **Menu Toggle**: Shows or hides the menu for loading, editing, and saving (exporting) configurations |
+| <kbd>Ctrl</kbd> + <kbd>F10</kbd>  | **Menu Toggle**: Shows or hides the menu for importing, editing, and exporting configurations        |
 | <kbd>Shift</kbd> + <kbd>Esc</kbd> | **Termination**: Immediately closes the script and destroys all overlay windows.                     |
 
 -----

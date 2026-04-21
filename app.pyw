@@ -398,9 +398,9 @@ class MenuOverlay:
             return container
 
         # Buttons
-        create_button(btn_frame, "📂", "Load Config", "#4dabf7", load_config)
+        create_button(btn_frame, "📥", "Import Config", "#4dabf7", load_config)
         create_button(btn_frame, "✏️", "Edit Config", "#ff922b", edit_config, validate_edit)
-        create_button(btn_frame, "💾", "Save Config", "#51cf66", save_config)
+        create_button(btn_frame, "💾", "Export Config", "#51cf66", export_config)
 
         self.visible = False
         self.toggle_requested = False
@@ -470,7 +470,7 @@ def edit_config():
     apply_config(config_data)
     print("[DEBUG] Reloaded config after edit:", current_config_path)
 
-def save_config():
+def export_config():
     global current_config_path
 
     # Generate a fresh timestamp for the suggested filename
@@ -518,7 +518,7 @@ def run_app():
     global routine_index, routine_state, routine_lmb_down_time
 
     marker = TooltipMarker()
-    menu = MenuOverlay(load_config, edit_config, save_config)
+    menu = MenuOverlay(load_config, edit_config, export_config)
 
     keyboard.add_hotkey('ctrl+f10', menu.toggle, suppress=True)
 
