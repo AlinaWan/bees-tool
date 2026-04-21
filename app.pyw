@@ -440,6 +440,7 @@ def load_config():
     global current_config_path, config_data
 
     path = filedialog.askopenfilename(
+        initialdir=SCRIPT_DIR,
         filetypes=[("JSON Config", "*.json")]
     )
 
