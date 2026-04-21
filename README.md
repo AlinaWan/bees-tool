@@ -27,7 +27,7 @@ pip install -r requirements.txt
 
 ## 🛠️ Configuration & Setup
 
-Adjust the constants within the header of the script to align with your hardware's performance profile:
+Adjust the constants within the configuration file to align with your hardware's performance profile:
 
 ### Slider Automation (Main Interaction)
 <details open>
@@ -87,7 +87,7 @@ Adjust the constants within the header of the script to align with your hardware
 | Keybind                           | Action                                                                                               |
 | :-------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | <kbd>F6</kbd>                     | **Toggle State**: Switches the tool between Active (Green) and Standby (Red).                        |
-| <kbd>Ctrl</kbd> + <kbd>F10</kbd>  | **Menu Toggle**: Shows or hides the menu for importing, editing, and exporting configurations        |
+| <kbd>Ctrl</kbd> + <kbd>F10</kbd>  | **Menu Toggle**: Shows or hides the menu for importing, editing, and saving configurations           |
 | <kbd>Shift</kbd> + <kbd>Esc</kbd> | **Termination**: Immediately closes the script and destroys all overlay windows.                     |
 
 -----

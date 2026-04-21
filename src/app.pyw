@@ -11,17 +11,19 @@ import subprocess
 import threading
 import time
 import tkinter as tk
+from ctypes import wintypes
 from datetime import datetime, timezone
 from tkinter import filedialog
 from typing import final as sealed
+import webbrowser
 
 import cv2
-import keyboard
 import numpy as np
-from ahk import AHK
 from mss import mss
 
-ahk = AHK()
+from hotkey_listener import HotkeyListener
+from input import mouse_move, mouse_click, key_event
+
 user32 = ctypes.windll.user32
 SCREEN_WIDTH = user32.GetSystemMetrics(0)
 SCREEN_HEIGHT = user32.GetSystemMetrics(1)
@@ -84,17 +86,22 @@ def apply_config(data):
 def build_current_config():
     return {
         "metadata": {
-            "author": "",
-            "version": "1.0.0",
-            "created": datetime.now(timezone.utc).isoformat(),
-            "description": [
-                "Bees Tool configuration schema 1.0.",
-                "You can write values as expressions based on screen dimensions using the",
-                "variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., SCREEN_HEIGHT / 2).",
-                "Please keep in mind that exporting the configuration will not preserve",
-                "expressions or metadata fields, so it is recommended to use the Edit Config",
-                "button to modify and save your existing configuration."
+            "custom_info": {
+                "author": "",
+                "net": "",
+                "flower": "",
+            },
+            "app_info": {
+                "version": "1.0.0",
+                "schema": 1,
+                "created": datetime.now(timezone.utc).isoformat(),
+                "description": [
+                    "---------------------- Bees Tool Configuration -----------------------",
+                    " You can write values as expressions based on screen dimensions using ",
+                    " variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., SCREEN_HEIGHT / 2).  ",
+                    "----------------------------------------------------------------------"
             ]
+            }
         },
         "slider_settings": {
             "confidence_threshold": CONFIDENCE_THRESHOLD,
@@ -195,10 +202,7 @@ def exit_logic():
     global should_exit
     should_exit = True
 
-# Register Hotkeys
-keyboard.add_hotkey(TOGGLE_KEY, toggle_logic, suppress=True)
-keyboard.add_hotkey(EXIT_KEY, exit_logic, suppress=True)
-
+# --- OVERLAY CLASSES ---
 @sealed
 class ScanAreaOverlay:
     """Creates a persistent overlay showing the scan boundaries and 8 markers."""
@@ -310,7 +314,9 @@ class TooltipMarker:
         self.root.withdraw()
         try: self.root.update()
         except: pass
+# ----------------------
 
+# --- MENU AND .JSON CONFIGURATION ---
 @sealed
 class MenuOverlay:
     def __init__(self, load_callback, edit_callback, save_callback):
@@ -413,8 +419,8 @@ class MenuOverlay:
 
         # Buttons
         create_button(btn_frame, "📥", "Import Config", "#4dabf7", load_config)
-        create_button(btn_frame, "✏️", "Edit Config", "#ff922b", edit_config, validate_edit)
-        create_button(btn_frame, "💾", "Export Config", "#51cf66", export_config)
+        create_button(btn_frame, "✏️", "Edit Config", "#ff922b", edit_config)
+        create_button(btn_frame, "❓", "Get Help", "#f74d4d", open_help)
 
         self.visible = False
         self.toggle_requested = False
@@ -551,17 +557,39 @@ def load_config():
         print(f"[ERROR] Failed to load config: {e}")
 
 def edit_config():
-    global current_config_path, watcher_thread
+    global current_config_path, watcher_thread, config_data
+    
+    # 1. If no file is loaded, create one first
     if not current_config_path:
-        return
+        timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
+        default_name = f"Bees_Tool_Config_{timestamp}.json"
+        
+        path = filedialog.asksaveasfilename(
+            initialdir=SCRIPT_DIR,
+            initialfile=default_name,
+            defaultextension=".json",
+            filetypes=[("JSON Config", "*.json")]
+        )
+        
+        if not path:
+            return # User cancelled the dialog
 
-    # 1. Open Notepad non-blocking
+        # 2. Write the current script settings to the new file
+        config = build_current_config()
+        with open(path, "w") as f:
+            json.dump(config, f, indent=4)
+        
+        # 3. Point the script to this new file
+        current_config_path = path
+        print(f"[DEBUG] Created and loaded config: {path}")
+
+    # 4. Open the file (either the existing one or the one just created) in Notepad
     subprocess.Popen(['notepad.exe', current_config_path])
-    print(f"[DEBUG] Opened {current_config_path} in background.")
+    print(f"[DEBUG] Opened {current_config_path} in Notepad.")
 
-    # 2. Start the file watcher thread if not already running
+    # 5. Ensure the watcher is running so edits are applied live
     if watcher_thread is None or not watcher_thread.is_alive():
-        watcher_cts.clear() # Reset the Cancel signal
+        watcher_cts.clear()
         watcher_thread = threading.Thread(
             target=watch_file_changes, 
             args=(current_config_path,), 
@@ -570,38 +598,9 @@ def edit_config():
         watcher_thread.start()
         print("[DEBUG] File watcher started.")
 
-def export_config():
-    global current_config_path
-
-    # Generate a fresh timestamp for the suggested filename
-    timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
-    default_name = f"Bees_Tool_Config_{timestamp}.json"
-
-    # Always open the dialog
-    path = filedialog.asksaveasfilename(
-        initialdir=SCRIPT_DIR,
-        initialfile=default_name,
-        defaultextension=".json",
-        filetypes=[("JSON Config", "*.json")]
-    )
-
-    if not path:
-        return
-
-    # Update the current path to the one the user just chose
-    current_config_path = path
-
-    config = build_current_config()
-
-    with open(current_config_path, "w") as f:
-        json.dump(config, f, indent=4)
-
-    print("[DEBUG] Saved config:", current_config_path)
-
-def validate_edit():
-    if not current_config_path:
-        return False, "Load Config First!"
-    return True, ""
+def open_help():
+    github_url = "https://github.com/AlinaWan/bees-tool#readme"
+    webbrowser.open(github_url)
 
 def pre_rotate_templates(template):
     t = cv2.resize(template, (0,0), fx=DOWNSCALE_FACTOR, fy=DOWNSCALE_FACTOR)
@@ -618,9 +617,10 @@ def run_app():
     global routine_index, routine_state, routine_lmb_down_time
 
     marker = TooltipMarker()
-    menu = MenuOverlay(load_config, edit_config, export_config)
+    menu = MenuOverlay(load_config, edit_config, open_help)
 
-    keyboard.add_hotkey('ctrl+f10', menu.toggle, suppress=True)
+    listener = HotkeyListener(toggle_logic, exit_logic, menu.toggle)
+    listener.start()
 
     raw_template = cv2.imread(TARGET_PATH, cv2.IMREAD_GRAYSCALE)
     if raw_template is None: return
@@ -634,8 +634,6 @@ def run_app():
     else:
         meter_template_gray = None
     # -----------------
-
-    ahk.run_script("CoordMode, Mouse, Screen")
 
     hit_counts = np.zeros(len(template_cache), dtype=int)
     search_order = list(range(len(template_cache)))
@@ -743,7 +741,7 @@ def run_app():
                             matches_found += 1
 
                 if matches_found == 4 and is_active:
-                    ahk.click(button='left', direction='up')
+                    mouse_click('left', 'up')
                     time.sleep(0.05)
 
                 cx = meter_pixels[0]
@@ -766,13 +764,13 @@ def run_app():
 
                     key = AUTO_ROUTINE_PATTERN[routine_index]
 
-                    ahk.key_down(key)
+                    key_event(key, 'down')
                     time.sleep(AUTO_ROUTINE_WALK_TIME_MS / 1000)
-                    ahk.key_up(key)
+                    key_event(key, 'up')
 
                     routine_index = (routine_index + 1) % len(AUTO_ROUTINE_PATTERN)
 
-                    ahk.click(button='left', direction='down')
+                    mouse_click('left', 'down')
                     routine_lmb_down_time = now
 
                     routine_state = "holding"
@@ -783,7 +781,7 @@ def run_app():
                         routine_state = "idle"
 
                     elif (now - routine_lmb_down_time) * 1000 > AUTO_ROUTINE_LMB_TIMEOUT_MS:
-                        ahk.click(button='left', direction='up')
+                        mouse_click('left', 'up')
                         routine_state = "idle"
             # --------------------
 
@@ -848,15 +846,14 @@ def run_app():
                     ahk_x = int(global_cx / scale)
                     ahk_y = int(global_cy / scale)
                     
-                    ahk.click(button='right', direction='up')
-                    ahk.mouse_move(ahk_x, ahk_y, speed=1)
-                    ahk.mouse_move(1, 0, relative=True)
-                    ahk.click(button='left', direction='down')
+                    mouse_click('right', 'up')
+                    mouse_move(ahk_x, ahk_y, speed=1)
+                    mouse_move(1, 0, relative=True)
+                    mouse_click('left', 'down')
 
-                    ahk.mouse_move(int(-np.cos(rad)*DRAG_STEP), int(-np.sin(rad)*DRAG_STEP), relative=True, speed=1)
-                    ahk.mouse_move(1, 0, relative=True)
-                    ahk.click(button='left', direction='up')
-
+                    mouse_move(int(-np.cos(rad)*DRAG_STEP), int(-np.sin(rad)*DRAG_STEP), relative=True, speed=1)
+                    mouse_move(1, 0, relative=True)
+                    mouse_click('left', 'up')
                     last_drag_time = time.perf_counter()
                     target_start_time = None
             else:
@@ -868,7 +865,6 @@ def run_app():
 
 def cleanup():
     stop_active_watcher()
-    keyboard.unhook_all()
 
 atexit.register(cleanup)
 
