@@ -16,7 +16,7 @@ SCREEN_WIDTH = user32.GetSystemMetrics(0)
 SCREEN_HEIGHT = user32.GetSystemMetrics(1)
 
 ##### CONFIGURATION #####
-# --- Minigame Automation ---
+# --- Slider Automation ---
 CONFIDENCE_THRESHOLD = 0.82                   # Confidence to track
 ROTATION_STEP = 45                            # Rotation steps
 DRAG_STEP = int(SCREEN_HEIGHT * (500 / 1080)) # Drag step to drag based on the screen height

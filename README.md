@@ -29,7 +29,7 @@ pip install -r requirements.txt
 
 Adjust the constants within the header of the script to align with your hardware's performance profile:
 
-### Minigame Automation
+### Slider Automation (Main Interaction)
 | Constant | Function |
 | :--- | :--- |
 | `CONFIDENCE_THRESHOLD` | The minimum normalized correlation coefficient (`0.0` to `1.0`) required for a match. |
@@ -41,7 +41,7 @@ Adjust the constants within the header of the script to align with your hardware
 | `BOUNDARY_MARGIN` | Pixel buffer allowing the drag destination to exist outside the ROI before invalidation. |
 | `MINIGAME_TIMEOUT_MS` | Duration a slider has not been detected before the system infers the minigame has ended. |
 
-### Meter Automation
+### Meter Automation (Swing Release)
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_RELEASE_ENABLED` | Toggles the calibration and execution of the automated meter-release system. |
@@ -49,7 +49,7 @@ Adjust the constants within the header of the script to align with your hardware
 | `AUTO_RELEASE_CONFIDENCE` | The normalized correlation threshold required for meter template calibration. |
 | `SEARCH_DEPTH` | The vertical pixel search range used to detect the rising meter. |
 
-### Routine Automation
+### Routine Automation (Traversal & Swing Execution)
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-swing routine (implicitly forces `AUTO_RELEASE_ENABLED`). |
