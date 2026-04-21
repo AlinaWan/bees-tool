@@ -30,6 +30,9 @@ pip install -r requirements.txt
 Adjust the constants within the header of the script to align with your hardware's performance profile:
 
 ### Slider Automation (Main Interaction)
+<details open>
+  <summary>Click to view</summary>
+
 | Constant | Function |
 | :--- | :--- |
 | `CONFIDENCE_THRESHOLD` | The minimum normalized correlation coefficient (`0.0` to `1.0`) required for a match. |
@@ -41,7 +44,11 @@ Adjust the constants within the header of the script to align with your hardware
 | `BOUNDARY_MARGIN` | Pixel buffer allowing the drag destination to exist outside the ROI before invalidation. |
 | `MINIGAME_TIMEOUT_MS` | Duration a slider has not been detected before the system infers the minigame has ended. |
 
+</details>
+
 ### Meter Automation (Swing Release)
+<details>
+  <summary>Click to view</summary>
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_RELEASE_ENABLED` | Toggles the calibration and execution of the automated meter-release system. |
@@ -49,13 +56,19 @@ Adjust the constants within the header of the script to align with your hardware
 | `AUTO_RELEASE_CONFIDENCE` | The normalized correlation threshold required for meter template calibration. |
 | `SEARCH_DEPTH` | The vertical pixel search range used to detect the rising meter. |
 
+</details>
+
 ### Routine Automation (Traversal & Swing Execution)
+<details>
+  <summary>Click to view</summary>
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-swing routine (implicitly forces `AUTO_RELEASE_ENABLED`). |
 | `AUTO_ROUTINE_PATTERN` | The ordered movement sequence executed between swing attempts. |
 | `AUTO_ROUTINE_WALK_TIME_MS` | Duration each movement key is held during routine traversal. |
 | `AUTO_ROUTINE_LMB_TIMEOUT_MS` | Maximum duration the routine will hold LMB awaiting a minigame before aborting the current cycle. |
+
+</details>
 
 ### Installation
 
@@ -69,10 +82,11 @@ Adjust the constants within the header of the script to align with your hardware
 
 ## ⌨️ Controls
 
-| Keybind | Action |
-| :--- | :--- |
-| <kbd>F6</kbd> | **Toggle State**: Switches the tool between Active (Green) and Standby (Red). |
-| <kbd>Shift</kbd> + <kbd>Esc</kbd> | **Termination**: Immediately closes the script and destroys all overlay windows. |
+| Keybind                           | Action                                                                                               |
+| :-------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| <kbd>F6</kbd>                     | **Toggle State**: Switches the tool between Active (Green) and Standby (Red).                        |
+| <kbd>Ctrl</kbd> + <kbd>F10</kbd>  | **Menu Toggle**: Shows or hides the menu for loading, editing, and saving (exporting) configurations |
+| <kbd>Shift</kbd> + <kbd>Esc</kbd> | **Termination**: Immediately closes the script and destroys all overlay windows.                     |
 
 -----
 
@@ -143,6 +157,10 @@ To maintain a high framerate, the tool utilizes a **Frequency-Based Distribution
 ### The Focus Nudge
 
 Prior to the primary interaction, the tool performs a 1-pixel relative displacement. This maneuver is designed to force the host application to update its "hover" state, ensuring the subsequent click-down event is registered *intra* the intended object's hit-box.
+
+### Configuration Portability
+
+All adjustable parameters can be stored in a human-readable `.json` file. This allows users to easily export, share, and import configurations without needing to modify the source code. These configuration files can be managed through the in-app menu, providing a user-friendly interface for customization and optimization based on individual hardware capabilities and display setups.
 
 -----
 

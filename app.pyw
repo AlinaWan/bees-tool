@@ -1,8 +1,17 @@
+﻿# -*- coding: utf-8 -*-
+__version__ = "1.0.0"
+__author__ = "Riri"
+__license__ = "MIT"
+
 import atexit
 import ctypes
+import json
 import os
+import subprocess
 import time
 import tkinter as tk
+from datetime import datetime, timezone
+from tkinter import filedialog
 
 import cv2
 import keyboard
@@ -15,7 +24,94 @@ user32 = ctypes.windll.user32
 SCREEN_WIDTH = user32.GetSystemMetrics(0)
 SCREEN_HEIGHT = user32.GetSystemMetrics(1)
 
-##### CONFIGURATION #####
+# Evaluator to allow json config values to be expressions based on screen dimensions
+def evaluate_value(value):
+    if isinstance(value, str):
+        allowed = {
+            "SCREEN_WIDTH": SCREEN_WIDTH,
+            "SCREEN_HEIGHT": SCREEN_HEIGHT
+        }
+        try:
+            return eval(value, {"__builtins__": {}}, allowed)
+        except:
+            return value
+    return value
+
+def apply_config(data):
+    global CONFIDENCE_THRESHOLD
+    global ROTATION_STEP
+    global DRAG_STEP
+    global COOLDOWN_MS
+    global LOCK_DURATION_MS
+    global DOWNSCALE_FACTOR
+    global BOUNDARY_MARGIN
+    global MINIGAME_TIMEOUT_MS
+
+    global AUTO_RELEASE_ENABLED
+    global AUTO_RELEASE_TOLERANCE
+    global AUTO_RELEASE_CONFIDENCE
+    global SEARCH_DEPTH
+
+    global AUTO_ROUTINE_ENABLED
+    global AUTO_ROUTINE_PATTERN
+    global AUTO_ROUTINE_WALK_TIME_MS
+    global AUTO_ROUTINE_LMB_TIMEOUT_MS
+
+    s = data["slider_settings"]
+    CONFIDENCE_THRESHOLD = evaluate_value(s["confidence_threshold"])
+    ROTATION_STEP = evaluate_value(s["rotation_step"])
+    DRAG_STEP = evaluate_value(s["drag_step"])
+    COOLDOWN_MS = evaluate_value(s["cooldown_ms"])
+    LOCK_DURATION_MS = evaluate_value(s["lock_duration_ms"])
+    DOWNSCALE_FACTOR = evaluate_value(s["downscale_factor"])
+    BOUNDARY_MARGIN = evaluate_value(s["boundary_margin"])
+    MINIGAME_TIMEOUT_MS = evaluate_value(s["minigame_timeout_ms"])
+
+    m = data["meter_settings"]
+    AUTO_RELEASE_ENABLED = evaluate_value(m["auto_release_enabled"])
+    AUTO_RELEASE_TOLERANCE = evaluate_value(m["auto_release_tolerance"])
+    AUTO_RELEASE_CONFIDENCE = evaluate_value(m["auto_release_confidence"])
+    SEARCH_DEPTH = evaluate_value(m["search_depth"])
+
+    r = data["routine_settings"]
+    AUTO_ROUTINE_ENABLED = evaluate_value(r["auto_routine_enabled"])
+    AUTO_ROUTINE_PATTERN = tuple(r["pattern"])
+    AUTO_ROUTINE_WALK_TIME_MS = evaluate_value(r["walk_time_ms"])
+    AUTO_ROUTINE_LMB_TIMEOUT_MS = evaluate_value(r["lmb_timeout_ms"])
+
+def build_current_config():
+    return {
+        "metadata": {
+            "author": "",
+            "version": "1.0.0",
+            "created": datetime.now(timezone.utc).isoformat(),
+            "description": "Bees Tool configuration schema 1.0. You can write values as expressions based on screen dimensions using the variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., \"drag_step\": \"SCREEN_HEIGHT / 2\"). Please keep in mind that re-exporting the configuration will not preserve these expressions."
+        },
+        "slider_settings": {
+            "confidence_threshold": CONFIDENCE_THRESHOLD,
+            "rotation_step": ROTATION_STEP,
+            "drag_step": DRAG_STEP,
+            "cooldown_ms": COOLDOWN_MS,
+            "lock_duration_ms": LOCK_DURATION_MS,
+            "downscale_factor": DOWNSCALE_FACTOR,
+            "boundary_margin": BOUNDARY_MARGIN,
+            "minigame_timeout_ms": MINIGAME_TIMEOUT_MS
+        },
+        "meter_settings": {
+            "auto_release_enabled": AUTO_RELEASE_ENABLED,
+            "auto_release_tolerance": AUTO_RELEASE_TOLERANCE,
+            "auto_release_confidence": AUTO_RELEASE_CONFIDENCE,
+            "search_depth": SEARCH_DEPTH
+        },
+        "routine_settings": {
+            "auto_routine_enabled": AUTO_ROUTINE_ENABLED,
+            "pattern": list(AUTO_ROUTINE_PATTERN),
+            "walk_time_ms": AUTO_ROUTINE_WALK_TIME_MS,
+            "lmb_timeout_ms": AUTO_ROUTINE_LMB_TIMEOUT_MS
+        }
+    }
+
+##### DEFAULT CONFIGURATION #####
 # --- Slider Automation ---
 CONFIDENCE_THRESHOLD = 0.82                   # Confidence to track
 ROTATION_STEP = 45                            # Rotation steps
@@ -52,9 +148,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TARGET_PATH = os.path.join(SCRIPT_DIR, 'target.png')
 METER_IMAGE_PATH = os.path.join(SCRIPT_DIR, 'meter.png')
 
-#########################
+#################################
 
 # Global State
+current_config_path = None
+config_data = None
+
 is_active = False
 should_exit = False
 last_slider_time = 0
@@ -199,6 +298,211 @@ class TooltipMarker:
         try: self.root.update()
         except: pass
 
+class MenuOverlay:
+    def __init__(self, load_callback, edit_callback, save_callback):
+        self.root = tk.Tk()
+        self.root.title("")
+        self.root.protocol("WM_DELETE_WINDOW", self.toggle) # IMPORTANT: Use this to toggle or it will mess up the lifecycle and break the toggle functionality
+        self.root.attributes("-toolwindow", True) # Keep a minimal title bar with only the close button and handle dragging the window
+        self.root.attributes("-topmost", True)
+        self.root.resizable(False, False)
+        self.alive = True
+
+        BG_COLOR = "#f8f9fa"
+        TEXT_DARK = "#212529"
+        LABEL_GREY = "#6c757d"
+        BORDER_COLOR = "#dee2e6"
+        PRESSED_COLOR = "#e9ecef"
+
+        self.root.configure(bg=BG_COLOR)
+
+        width, height = 380, 180
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        x = (sw // 2) - (width // 2)
+        y = (sh // 2) - (height // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+        header = tk.Label(
+            self.root,
+            text="What would you like to do?",
+            font=("Segoe UI Variable Display", 15, "bold"),
+            fg=TEXT_DARK,
+            bg=BG_COLOR,
+            pady=10
+        )
+        header.pack()
+
+        btn_frame = tk.Frame(self.root, bg=BG_COLOR)
+        btn_frame.pack(pady=5) 
+
+        def rounded_rect(canvas, x1, y1, x2, y2, r, **kwargs):
+            points = [x1+r, y1, x1+r, y1, x2-r, y1, x2-r, y1, x2, y1, x2, y1+r, x2, y1+r, x2, y2-r, x2, y2-r, x2, y2, x2-r, y2, x2-r, y2, x1+r, y2, x1+r, y2, x1, y2, x1, y2-r, x1, y2-r, x1, y1+r, x1, y1+r, x1, y1]
+            return canvas.create_polygon(points, smooth=True, **kwargs)
+
+        def create_button(parent, emoji, label_text, color, command, validator=None):
+            self.after_ids = []
+
+            size = 110
+            radius = 20
+            
+            container = tk.Frame(parent, bg=BG_COLOR)
+            container.pack(side="left", padx=5)
+
+            canvas = tk.Canvas(
+                container, width=size, height=size,
+                bg=BG_COLOR, highlightthickness=0, cursor="hand2"
+            )
+            canvas.pack()
+
+            rect = rounded_rect(canvas, 2, 2, size-2, size-2, radius, fill="white", outline=BORDER_COLOR)
+            icon = canvas.create_text(size/2, size/2 - 10, text=emoji, font=("Segoe UI Emoji", 22), fill=color)
+            txt = canvas.create_text(size/2, size/2 + 22, text=label_text, font=("Segoe UI Semibold", 8), fill=LABEL_GREY)
+
+            original_label = label_text
+            original_emoji = emoji
+
+            def on_press(e):
+                canvas.itemconfig(rect, fill=PRESSED_COLOR)
+                canvas.move(icon, 1, 1)
+                canvas.move(txt, 1, 1)
+
+            def on_release(e):
+                canvas.itemconfig(rect, fill="white")
+                canvas.move(icon, -1, -1)
+                canvas.move(txt, -1, -1)
+            
+                if validator:
+                    ok, msg = validator()
+                    if not ok:
+                        flash_message(msg)
+                        return
+            
+                command()
+
+            def flash_message(msg, duration=2000):
+                canvas.itemconfig(txt, text=msg)
+            
+                def restore():
+                    try:
+                        canvas.itemconfig(txt, text=original_label)
+                    except tk.TclError:
+                        pass
+            
+                after_id = canvas.after(duration, restore)
+                self.after_ids.append(after_id)
+
+            canvas.bind("<Button-1>", on_press)
+            canvas.bind("<ButtonRelease-1>", on_release)
+
+            return container
+
+        # Buttons
+        create_button(btn_frame, "📂", "Load Config", "#4dabf7", load_config)
+        create_button(btn_frame, "✏️", "Edit Config", "#ff922b", edit_config, validate_edit)
+        create_button(btn_frame, "💾", "Save Config", "#51cf66", save_config)
+
+        self.visible = False
+        self.toggle_requested = False
+        self.root.withdraw()
+
+    def toggle(self):
+        self.toggle_requested = True
+
+    def _execute_toggle(self):
+        if not self.alive:
+            return
+    
+        try:
+            if self.visible:
+                self.root.withdraw()
+            else:
+                self.root.deiconify()
+            self.visible = not self.visible
+        except tk.TclError:
+            self.alive = False
+    
+        self.toggle_requested = False
+
+    def update(self):
+        if not self.alive:
+            return
+    
+        if self.toggle_requested:
+            self._execute_toggle()
+    
+        try:
+            self.root.update()
+        except tk.TclError:
+            self.alive = False
+
+def load_config():
+    global current_config_path, config_data
+
+    path = filedialog.askopenfilename(
+        filetypes=[("JSON Config", "*.json")]
+    )
+
+    if not path:
+        return
+
+    with open(path, "r") as f:
+        config_data = json.load(f)
+
+    apply_config(config_data)
+    current_config_path = path
+
+    print("[DEBUG] Loaded config:", path)
+
+def edit_config():
+    global current_config_path, config_data
+    if not current_config_path:
+        return
+
+    # subprocess.run waits for the editor to close
+    # Note: This works best with Notepad; VS Code/Sublime might return immediately
+    subprocess.run(['notepad.exe', current_config_path])
+    print("[DEBUG] Opened config:", current_config_path)
+    
+    # Reload the file after user closes Notepad
+    with open(current_config_path, "r") as f:
+        config_data = json.load(f)
+    apply_config(config_data)
+    print("[DEBUG] Reloaded config after edit:", current_config_path)
+
+def save_config():
+    global current_config_path
+
+    # Generate a fresh timestamp for the suggested filename
+    timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
+    default_name = f"Bees_Tool_Config_{timestamp}.json"
+
+    # Always open the dialog
+    path = filedialog.asksaveasfilename(
+        initialdir=SCRIPT_DIR,
+        initialfile=default_name,
+        defaultextension=".json",
+        filetypes=[("JSON Config", "*.json")]
+    )
+
+    if not path:
+        return
+
+    # Update the current path to the one the user just chose
+    current_config_path = path
+
+    config = build_current_config()
+
+    with open(current_config_path, "w") as f:
+        json.dump(config, f, indent=4)
+
+    print("[DEBUG] Saved config:", current_config_path)
+
+def validate_edit():
+    if not current_config_path:
+        return False, "Load Config First!"
+    return True, ""
+
 def pre_rotate_templates(template):
     t = cv2.resize(template, (0,0), fx=DOWNSCALE_FACTOR, fy=DOWNSCALE_FACTOR)
     rotated_cache = []
@@ -214,6 +518,9 @@ def run_app():
     global routine_index, routine_state, routine_lmb_down_time
 
     marker = TooltipMarker()
+    menu = MenuOverlay(load_config, edit_config, save_config)
+
+    keyboard.add_hotkey('ctrl+f10', menu.toggle, suppress=True)
 
     raw_template = cv2.imread(TARGET_PATH, cv2.IMREAD_GRAYSCALE)
     if raw_template is None: return
@@ -261,6 +568,8 @@ def run_app():
         
         while not should_exit:
             area_visual.update(is_active)
+            if menu.alive:
+                menu.update()
 
             now = time.perf_counter()
 

@@ -229,3 +229,7 @@ __marimo__/
 
 # CodeRush
 .cr/
+
+# Config files generated
+# by Bees Tool
+*[Cc]onfig*.json
