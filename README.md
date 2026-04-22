@@ -74,7 +74,7 @@ Adjust the constants within the configuration file to align with your hardware's
 
 ### Installation
 
-1.  Ensure `target.png` (the visual signature of your entity) is present in the root directory.
+1.  Ensure `target.png` (the visual signature of your entity) is present in the resources directory.
 2.  Initialize the script via terminal:
     ```bash
     python app.pyw
