@@ -23,6 +23,7 @@ from ahk import AHK
 from mss import mss
 
 from hotkey_listener import HotkeyListener
+from native_methods import NativeMethods
 
 ahk = AHK()
 user32 = ctypes.windll.user32
@@ -218,6 +219,7 @@ class ScanAreaOverlay:
         y = int(area['top'] / scale)
         
         self.root.geometry(f"{w}x{h}+{x}+{y}")
+
         self.canvas = tk.Canvas(self.root, width=w, height=h, bg="black", highlightthickness=0)
         self.canvas.pack()
 
@@ -322,6 +324,7 @@ class TooltipMarker:
 class MenuOverlay:
     def __init__(self, load_callback, edit_callback, save_callback):
         self.root = tk.Tk()
+        self.root.withdraw() # Withdraw immediately to avoid flicker on startup; will show when toggled
         self.root.title("")
         self.root.protocol("WM_DELETE_WINDOW", self.toggle) # IMPORTANT: Use this to toggle or it will mess up the lifecycle and break the toggle functionality
         self.root.attributes("-toolwindow", True) # Keep a minimal title bar with only the close button and handle dragging the window
@@ -343,6 +346,13 @@ class MenuOverlay:
         x = (sw // 2) - (width // 2)
         y = (sh // 2) - (height // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+        try:
+            self.root.update_idletasks()
+            hwnd = user32.GetParent(self.root.winfo_id()) # Get the actual window handle to apply
+            NativeMethods.apply_rounded_corners(hwnd)
+        except:
+            pass
 
         header = tk.Label(
             self.root,
@@ -425,7 +435,6 @@ class MenuOverlay:
 
         self.visible = False
         self.toggle_requested = False
-        self.root.withdraw()
 
     def toggle(self):
         self.toggle_requested = True
@@ -481,13 +490,8 @@ def watch_file_changes(file_to_watch):
     FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
     FILE_NOTIFY_CHANGE_LAST_WRITE = 0x00000010
 
-    hDir = ctypes.windll.kernel32.CreateFileW(
-        dir_to_watch, FILE_LIST_DIRECTORY,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        None, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, None
-    )
+    hDir = NativeMethods.open_directory_handle(dir_to_watch)
 
-    # Either -1 or 0xFFFFFFFFFFFFFFFF
     if not hDir or hDir == ctypes.c_void_p(-1).value: # we use c_void_p
         return
 
@@ -497,10 +501,10 @@ def watch_file_changes(file_to_watch):
 
         while not watcher_cts.is_set():
             # This call blocks this background thread until a file in the folder changes
-            success = ctypes.windll.kernel32.ReadDirectoryChangesW(
-                hDir, buffer, ctypes.sizeof(buffer), False,
-                FILE_NOTIFY_CHANGE_LAST_WRITE,
-                ctypes.byref(bytes_returned), None, None
+            success = NativeMethods.read_directory_changes(
+                hDir,
+                buffer,
+                bytes_returned
             )
 
             if success and not watcher_cts.is_set():
@@ -520,7 +524,7 @@ def watch_file_changes(file_to_watch):
                         print(f"[DEBUG] Live reload error: {e}")
     finally:
         # --- DISPOSE PHASE ---
-        ctypes.windll.kernel32.CloseHandle(hDir)
+        NativeMethods.close_handle(hDir)
         print("[DEBUG] Directory Handle Closed.")
 # -------------------
 
