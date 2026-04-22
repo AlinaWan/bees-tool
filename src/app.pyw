@@ -19,11 +19,12 @@ import webbrowser
 
 import cv2
 import numpy as np
+from ahk import AHK
 from mss import mss
 
 from hotkey_listener import HotkeyListener
-from input import mouse_move, mouse_click, key_event
 
+ahk = AHK()
 user32 = ctypes.windll.user32
 SCREEN_WIDTH = user32.GetSystemMetrics(0)
 SCREEN_HEIGHT = user32.GetSystemMetrics(1)
@@ -635,6 +636,8 @@ def run_app():
         meter_template_gray = None
     # -----------------
 
+    ahk.run_script("CoordMode, Mouse, Screen")
+
     hit_counts = np.zeros(len(template_cache), dtype=int)
     search_order = list(range(len(template_cache)))
     
@@ -741,7 +744,7 @@ def run_app():
                             matches_found += 1
 
                 if matches_found == 4 and is_active:
-                    mouse_click('left', 'up')
+                    ahk.click(button='left', direction='up')
                     time.sleep(0.05)
 
                 cx = meter_pixels[0]
@@ -764,13 +767,13 @@ def run_app():
 
                     key = AUTO_ROUTINE_PATTERN[routine_index]
 
-                    key_event(key, 'down')
+                    ahk.key_down(key)
                     time.sleep(AUTO_ROUTINE_WALK_TIME_MS / 1000)
-                    key_event(key, 'up')
+                    ahk.key_up(key)
 
                     routine_index = (routine_index + 1) % len(AUTO_ROUTINE_PATTERN)
 
-                    mouse_click('left', 'down')
+                    ahk.click(button='left', direction='down')
                     routine_lmb_down_time = now
 
                     routine_state = "holding"
@@ -781,7 +784,7 @@ def run_app():
                         routine_state = "idle"
 
                     elif (now - routine_lmb_down_time) * 1000 > AUTO_ROUTINE_LMB_TIMEOUT_MS:
-                        mouse_click('left', 'up')
+                        ahk.click(button='left', direction='up')
                         routine_state = "idle"
             # --------------------
 
@@ -843,17 +846,18 @@ def run_app():
                 marker.show(global_cx, global_cy, scale, angle=angle, confidence=best_val, locked=is_locked, in_bounds=in_bounds, drag_to=(dest_x, dest_y), winner_idx=winner_idx)
 
                 if in_bounds and is_locked and (now - last_drag_time) * 1000 > COOLDOWN_MS:
-                    ahk_x = int(global_cx / scale)
-                    ahk_y = int(global_cy / scale)
+                    x = int(global_cx / scale)
+                    y = int(global_cy / scale)
                     
-                    mouse_click('right', 'up')
-                    mouse_move(ahk_x, ahk_y, speed=1)
-                    mouse_move(1, 0, relative=True)
-                    mouse_click('left', 'down')
+                    ahk.click(button='right', direction='up')
+                    ahk.mouse_move(x, y, speed=1)
+                    ahk.mouse_move(1, 0, relative=True)
+                    ahk.click(button='left', direction='down')
 
-                    mouse_move(int(-np.cos(rad)*DRAG_STEP), int(-np.sin(rad)*DRAG_STEP), relative=True, speed=1)
-                    mouse_move(1, 0, relative=True)
-                    mouse_click('left', 'up')
+                    ahk.mouse_move(int(-np.cos(rad)*DRAG_STEP), int(-np.sin(rad)*DRAG_STEP), relative=True, speed=1)
+                    ahk.mouse_move(1, 0, relative=True)
+                    ahk.click(button='left', direction='up')
+
                     last_drag_time = time.perf_counter()
                     target_start_time = None
             else:
