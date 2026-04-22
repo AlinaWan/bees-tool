@@ -27,6 +27,11 @@ class NativeMethods:
     _DWMWA_WINDOW_CORNER_PREFERENCE: ReadOnly = 33
     _DWMWCP_ROUND: ReadOnly = 2
 
+    _DPI_AWARENESS_CONTEXT_UNAWARE = ctypes.c_void_p(-1)
+    _DPI_AWARENESS_CONTEXT_SYSTEM_AWARE = ctypes.c_void_p(-2)
+    _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE = ctypes.c_void_p(-3)
+    _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ctypes.c_void_p(-4)
+
     _FILE_LIST_DIRECTORY: ReadOnly = 0x0001
     _FILE_SHARE_READ: ReadOnly = 0x00000001
     _FILE_SHARE_WRITE: ReadOnly = 0x00000002
@@ -99,6 +104,9 @@ class NativeMethods:
     _user32.MessageBoxW.argtypes = [wintypes.HWND, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.UINT]
     _user32.MessageBoxW.restype = ctypes.c_int
 
+    _user32.SetProcessDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+    _user32.SetProcessDpiAwarenessContext.restype = wintypes.BOOL
+
     # Memory management related methods
     @staticmethod
     def create_buffer(size=1024):
@@ -159,6 +167,19 @@ class NativeMethods:
             NativeMethods._DWMWA_WINDOW_CORNER_PREFERENCE,
             ctypes.byref(pref),
             ctypes.sizeof(pref)
+        )
+
+    @staticmethod
+    def set_process_dpi_awareness_context(context=-4):
+        ctx_map = {
+            -1: NativeMethods._DPI_AWARENESS_CONTEXT_UNAWARE,
+            -2: NativeMethods._DPI_AWARENESS_CONTEXT_SYSTEM_AWARE,
+            -3: NativeMethods._DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE,
+            -4: NativeMethods._DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
+        }
+
+        return NativeMethods._user32.SetProcessDpiAwarenessContext(
+            ctx_map.get(context, NativeMethods._DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)
         )
 
     # Directory monitoring related methods

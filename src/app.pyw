@@ -347,6 +347,11 @@ atexit.register(cleanup)
 
 if __name__ == "__main__":
     try:
+        NativeMethods.set_process_dpi_awareness_context(-4)
+    except Exception:
+        pass
+
+    try:
         run_app()
     except cv2.error as e:
         if "error: (-215:Assertion failed)" in str(e):
