@@ -1,4 +1,5 @@
 import ctypes
+from ctypes import wintypes
 from typing import final as sealed
 
 @sealed
@@ -6,6 +7,12 @@ class NativeMethods:
 
     _dwmapi = ctypes.WinDLL("dwmapi")
     _kernel32 = ctypes.WinDLL("kernel32")
+
+    _dwmapi.DwmSetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+    _dwmapi.DwmSetWindowAttribute.restype = ctypes.HRESULT
+
+    _kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    _kernel32.CloseHandle.restype = wintypes.BOOL
 
     _DWMWA_WINDOW_CORNER_PREFERENCE = 33
     _DWMWCP_ROUND = 2

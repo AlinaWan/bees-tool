@@ -22,8 +22,8 @@ import numpy as np
 from ahk import AHK
 from mss import mss
 
-from hotkey_listener import HotkeyListener
-from native_methods import NativeMethods
+from core.native_methods import NativeMethods
+from services.hotkey_listener import HotkeyListener
 
 ahk = AHK()
 user32 = ctypes.windll.user32
@@ -163,8 +163,8 @@ EXIT_KEY = 'shift+esc'
 
 # Template
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TARGET_PATH = os.path.join(SCRIPT_DIR, 'target.png')
-METER_IMAGE_PATH = os.path.join(SCRIPT_DIR, 'meter.png')
+TARGET_PATH = os.path.join(SCRIPT_DIR, 'resources', 'target.png')
+METER_IMAGE_PATH = os.path.join(SCRIPT_DIR, 'resources', 'meter.png')
 
 #################################
 
@@ -482,13 +482,6 @@ def watch_file_changes(file_to_watch):
     file_to_watch = os.path.abspath(file_to_watch)
     dir_to_watch = os.path.dirname(file_to_watch)
     filename_to_watch = os.path.basename(file_to_watch)
-
-    # Win32 Constants
-    FILE_LIST_DIRECTORY = 0x0001
-    FILE_SHARE_READ, FILE_SHARE_WRITE = 0x00000001, 0x00000002
-    OPEN_EXISTING = 3
-    FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
-    FILE_NOTIFY_CHANGE_LAST_WRITE = 0x00000010
 
     hDir = NativeMethods.open_directory_handle(dir_to_watch)
 
