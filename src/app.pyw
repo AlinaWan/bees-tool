@@ -358,11 +358,21 @@ if __name__ == "__main__":
                 "Fatal Error",
                 NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
             )
-            raise # raise directly so we don't get a plain traceback
+            raise # raise directly so we get a nicely colored traceback instead of plain text
         else:
+            NativeMethods.message_box(
+                f"An OpenCV error occurred: {e}",
+                "Fatal Error",
+                NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
+            )
             raise
 
-    except Exception:
+    except Exception as e:
+        NativeMethods.message_box(
+            f"An unexpected error occurred: {e}",
+            "Fatal Error",
+            NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
+        )
         raise
 
     finally:
