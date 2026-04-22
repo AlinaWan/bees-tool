@@ -2,6 +2,21 @@ import ctypes
 from ctypes import wintypes
 from typing import final as sealed
 
+if ctypes.sizeof(ctypes.c_void_p) == 8:
+    ULONG_PTR = ctypes.c_ulonglong
+else:
+    ULONG_PTR = ctypes.c_ulong
+
+@sealed
+class OVERLAPPED(ctypes.Structure):
+    _fields_ = [
+        ("Internal", ULONG_PTR),
+        ("InternalHigh", ULONG_PTR),
+        ("Offset", wintypes.DWORD),
+        ("OffsetHigh", wintypes.DWORD),
+        ("hEvent", wintypes.HANDLE),
+    ]
+
 @sealed
 class NativeMethods:
 
@@ -62,6 +77,18 @@ class NativeMethods:
 
     _kernel32.CancelIo.argtypes = [wintypes.HANDLE]
     _kernel32.CancelIo.restype = wintypes.BOOL
+
+    _kernel32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    _kernel32.CreateFileW.restype = wintypes.HANDLE
+
+    _kernel32.ReadDirectoryChangesW.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD, wintypes.BOOL, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(OVERLAPPED), wintypes.LPVOID]
+    _kernel32.ReadDirectoryChangesW.restype = wintypes.BOOL
+
+    _user32.RegisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int, wintypes.UINT, wintypes.UINT]
+    _user32.RegisterHotKey.restype = wintypes.BOOL
+
+    _user32.UnregisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int]
+    _user32.UnregisterHotKey.restype = wintypes.BOOL
 
     _user32.GetParent.argtypes = [wintypes.HWND]
     _user32.GetParent.restype = wintypes.HWND
@@ -150,7 +177,7 @@ class NativeMethods:
             None,
             NativeMethods._OPEN_EXISTING,
             NativeMethods._FILE_FLAG_BACKUP_SEMANTICS | NativeMethods._FILE_FLAG_OVERLAPPED,
-            None
+            wintypes.HANDLE(None)
         )
 
     @staticmethod
@@ -209,12 +236,3 @@ class NativeMethods:
     @staticmethod
     def get_screen_height():
         return NativeMethods.get_system_metrics(1)
-
-class OVERLAPPED(ctypes.Structure):
-    _fields_ = [
-        ("Internal", wintypes.LPVOID),
-        ("InternalHigh", wintypes.LPVOID),
-        ("Offset", wintypes.DWORD),
-        ("OffsetHigh", wintypes.DWORD),
-        ("hEvent", wintypes.HANDLE),
-    ]
