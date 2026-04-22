@@ -24,24 +24,18 @@ from mss import mss
 
 from core.native_methods import NativeMethods
 from services.hotkey_listener import HotkeyListener
+from utils.math_evaluator import MathEvaluator
 
 ahk = AHK()
 user32 = ctypes.windll.user32
 SCREEN_WIDTH = user32.GetSystemMetrics(0)
 SCREEN_HEIGHT = user32.GetSystemMetrics(1)
 
-# Evaluator to allow json config values to be expressions based on screen dimensions
-def evaluate_value(value):
-    if isinstance(value, str):
-        allowed = {
-            "SCREEN_WIDTH": SCREEN_WIDTH,
-            "SCREEN_HEIGHT": SCREEN_HEIGHT
-        }
-        try:
-            return eval(value, {"__builtins__": {}}, allowed)
-        except:
-            return value
-    return value
+# Evaluator to allow json config values to be expressions
+evaluator = MathEvaluator({
+    "SCREEN_WIDTH": SCREEN_WIDTH,
+    "SCREEN_HEIGHT": SCREEN_HEIGHT
+})
 
 def apply_config(data):
     global CONFIDENCE_THRESHOLD
@@ -64,26 +58,26 @@ def apply_config(data):
     global AUTO_ROUTINE_LMB_TIMEOUT_MS
 
     s = data["slider_settings"]
-    CONFIDENCE_THRESHOLD = evaluate_value(s["confidence_threshold"])
-    ROTATION_STEP = evaluate_value(s["rotation_step"])
-    DRAG_STEP = evaluate_value(s["drag_step"])
-    COOLDOWN_MS = evaluate_value(s["cooldown_ms"])
-    LOCK_DURATION_MS = evaluate_value(s["lock_duration_ms"])
-    DOWNSCALE_FACTOR = evaluate_value(s["downscale_factor"])
-    BOUNDARY_MARGIN = evaluate_value(s["boundary_margin"])
-    MINIGAME_TIMEOUT_MS = evaluate_value(s["minigame_timeout_ms"])
+    CONFIDENCE_THRESHOLD = evaluator.evaluate(s["confidence_threshold"])
+    ROTATION_STEP = evaluator.evaluate(s["rotation_step"])
+    DRAG_STEP = evaluator.evaluate(s["drag_step"])
+    COOLDOWN_MS = evaluator.evaluate(s["cooldown_ms"])
+    LOCK_DURATION_MS = evaluator.evaluate(s["lock_duration_ms"])
+    DOWNSCALE_FACTOR = evaluator.evaluate(s["downscale_factor"])
+    BOUNDARY_MARGIN = evaluator.evaluate(s["boundary_margin"])
+    MINIGAME_TIMEOUT_MS = evaluator.evaluate(s["minigame_timeout_ms"])
 
     m = data["meter_settings"]
-    AUTO_RELEASE_ENABLED = evaluate_value(m["auto_release_enabled"])
-    AUTO_RELEASE_TOLERANCE = evaluate_value(m["auto_release_tolerance"])
-    AUTO_RELEASE_CONFIDENCE = evaluate_value(m["auto_release_confidence"])
-    SEARCH_DEPTH = evaluate_value(m["search_depth"])
+    AUTO_RELEASE_ENABLED = evaluator.evaluate(m["auto_release_enabled"])
+    AUTO_RELEASE_TOLERANCE = evaluator.evaluate(m["auto_release_tolerance"])
+    AUTO_RELEASE_CONFIDENCE = evaluator.evaluate(m["auto_release_confidence"])
+    SEARCH_DEPTH = evaluator.evaluate(m["search_depth"])
 
     r = data["routine_settings"]
-    AUTO_ROUTINE_ENABLED = evaluate_value(r["auto_routine_enabled"])
+    AUTO_ROUTINE_ENABLED = evaluator.evaluate(r["auto_routine_enabled"])
     AUTO_ROUTINE_PATTERN = tuple(r["pattern"])
-    AUTO_ROUTINE_WALK_TIME_MS = evaluate_value(r["walk_time_ms"])
-    AUTO_ROUTINE_LMB_TIMEOUT_MS = evaluate_value(r["lmb_timeout_ms"])
+    AUTO_ROUTINE_WALK_TIME_MS = evaluator.evaluate(r["walk_time_ms"])
+    AUTO_ROUTINE_LMB_TIMEOUT_MS = evaluator.evaluate(r["lmb_timeout_ms"])
 
 def build_current_config():
     return {
@@ -98,10 +92,12 @@ def build_current_config():
                 "schema": 1,
                 "created": datetime.now(timezone.utc).isoformat(),
                 "description": [
-                    "---------------------- Bees Tool Configuration -----------------------",
-                    " You can write values as expressions based on screen dimensions using ",
-                    " variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., SCREEN_HEIGHT / 2).  ",
-                    "----------------------------------------------------------------------"
+                    "---------------------- Bees Tool Configuration ----------------------",
+                    " Feel free to add your own notes in the 'custom_info' section above! ",
+                    " You can write values as expressions based on screen dimensions with ",
+                    " variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., SCREEN_HEIGHT / 2). ",
+                    " Supported operators: +, -, *, /, //, %, **, +x, -x and parentheses. ",
+                    "---------------------------------------------------------------------"
             ]
             }
         },
