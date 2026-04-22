@@ -1,6 +1,6 @@
 import ctypes
 from ctypes import wintypes
-from typing import final as sealed
+from typing import Final as ReadOnly, final as sealed
 
 if ctypes.sizeof(ctypes.c_void_p) == 8:
     ULONG_PTR = ctypes.c_ulonglong
@@ -20,42 +20,42 @@ class OVERLAPPED(ctypes.Structure):
 @sealed
 class NativeMethods:
 
-    _dwmapi = ctypes.WinDLL("dwmapi")
-    _kernel32 = ctypes.WinDLL("kernel32")
-    _user32 = ctypes.WinDLL("user32")
+    _dwmapi: ReadOnly = ctypes.WinDLL("dwmapi")
+    _kernel32: ReadOnly = ctypes.WinDLL("kernel32")
+    _user32: ReadOnly = ctypes.WinDLL("user32")
 
-    _DWMWA_WINDOW_CORNER_PREFERENCE = 33
-    _DWMWCP_ROUND = 2
+    _DWMWA_WINDOW_CORNER_PREFERENCE: ReadOnly = 33
+    _DWMWCP_ROUND: ReadOnly = 2
 
-    _FILE_LIST_DIRECTORY = 0x0001
-    _FILE_SHARE_READ = 0x00000001
-    _FILE_SHARE_WRITE = 0x00000002
-    _OPEN_EXISTING = 3
-    _FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
-    _FILE_NOTIFY_CHANGE_LAST_WRITE = 0x00000010
+    _FILE_LIST_DIRECTORY: ReadOnly = 0x0001
+    _FILE_SHARE_READ: ReadOnly = 0x00000001
+    _FILE_SHARE_WRITE: ReadOnly = 0x00000002
+    _OPEN_EXISTING: ReadOnly = 3
+    _FILE_FLAG_BACKUP_SEMANTICS: ReadOnly = 0x02000000
+    _FILE_NOTIFY_CHANGE_LAST_WRITE: ReadOnly = 0x00000010
 
-    _FILE_FLAG_OVERLAPPED = 0x40000000
-    _WAIT_OBJECT_0 = 0x00000000
-    _INFINITE = 0xFFFFFFFF
+    _FILE_FLAG_OVERLAPPED: ReadOnly = 0x40000000
+    _WAIT_OBJECT_0: ReadOnly = 0x00000000
+    _INFINITE: ReadOnly = 0xFFFFFFFF
 
-    INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
+    INVALID_HANDLE_VALUE: ReadOnly = wintypes.HANDLE(-1).value
 
-    MB_ICONERROR = 0x10
-    MB_ICONWARNING = 0x30
-    MB_ICONINFORMATION = 0x40
-    MB_ICONQUESTION = 0x20
+    MB_ICONERROR: ReadOnly = 0x10
+    MB_ICONWARNING: ReadOnly = 0x30
+    MB_ICONINFORMATION: ReadOnly = 0x40
+    MB_ICONQUESTION: ReadOnly = 0x20
 
-    MB_OK = 0x00000000
-    MB_OKCANCEL = 0x00000001
-    MB_YESNO = 0x00000004
-    MB_YESNOCANCEL = 0x00000003
+    MB_OK: ReadOnly = 0x00000000
+    MB_OKCANCEL: ReadOnly = 0x00000001
+    MB_YESNO: ReadOnly = 0x00000004
+    MB_YESNOCANCEL: ReadOnly = 0x00000003
 
-    WM_HOTKEY = 0x0312
-    MOD_SHIFT = 0x0004
-    MOD_CONTROL = 0x0002
-    VK_F6 = 0x75
-    VK_F10 = 0x79
-    VK_ESCAPE = 0x1B
+    WM_HOTKEY: ReadOnly = 0x0312
+    MOD_SHIFT: ReadOnly = 0x0004
+    MOD_CONTROL: ReadOnly = 0x0002
+    VK_F6: ReadOnly = 0x75
+    VK_F10: ReadOnly = 0x79
+    VK_ESCAPE: ReadOnly = 0x1B
 
     _dwmapi.DwmSetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
     _dwmapi.DwmSetWindowAttribute.restype = ctypes.HRESULT
