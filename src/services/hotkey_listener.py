@@ -1,7 +1,5 @@
-import ctypes
 import threading
 from typing import final as sealed
-from ctypes import wintypes
 
 from core.native_methods import NativeMethods
 
@@ -18,11 +16,20 @@ class HotkeyListener(threading.Thread):
         # ID 1: F6 (Toggle Logic)
         # ID 2: Shift + Escape (Exit Logic)
         # ID 3: Ctrl + F10 (Menu Toggle)
-        NativeMethods.register_hotkey(None, 1, 0, NativeMethods.VK_F6)
-        NativeMethods.register_hotkey(None, 2, NativeMethods.MOD_SHIFT, NativeMethods.VK_ESCAPE)
-        NativeMethods.register_hotkey(None, 3, NativeMethods.MOD_CONTROL, NativeMethods.VK_F10)
+        results = [
+            NativeMethods.register_hotkey(None, 1, 0, NativeMethods.VK_F6),
+            NativeMethods.register_hotkey(None, 2, NativeMethods.MOD_SHIFT, NativeMethods.VK_ESCAPE),
+            NativeMethods.register_hotkey(None, 3, NativeMethods.MOD_CONTROL, NativeMethods.VK_F10)
+        ]
 
-        msg = wintypes.MSG()
+        if not all(results):
+            NativeMethods.message_box(
+                "Failed to register hotkeys.\n\nCheck if another program is using the same keys.", 
+                "Hotkey Error", 
+                NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
+            )
+
+        msg = NativeMethods.create_msg()
         while NativeMethods.get_message(msg) != 0:
             if msg.message == NativeMethods.WM_HOTKEY:
                 if msg.wParam == 1: self.toggle_cb()

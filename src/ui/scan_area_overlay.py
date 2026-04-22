@@ -1,0 +1,82 @@
+import tkinter as tk
+from typing import final as sealed
+
+@sealed
+class ScanAreaOverlay:
+    """Creates a persistent overlay showing the scan boundaries and 8 markers."""
+    def __init__(self, area, scale):
+        self.root = tk.Tk()
+        self.root.overrideredirect(True)
+        self.root.attributes("-topmost", True, "-transparentcolor", "black")
+        
+        w = int(area['width'] / scale)
+        h = int(area['height'] / scale)
+        x = int(area['left'] / scale)
+        y = int(area['top'] / scale)
+        
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+
+        self.canvas = tk.Canvas(self.root, width=w, height=h, bg="black", highlightthickness=0)
+        self.canvas.pack()
+
+        self.points = [
+            (0, 0), (w//2, 0), (w, 0),
+            (0, h//2), (w, h//2),
+            (0, h), (w//2, h), (w, h)
+        ]
+        self.dots = []
+        for px, py in self.points:
+            size = 2
+            dot = self.canvas.create_rectangle(px-size, py-size, px+size, py+size, fill="red", outline="")
+            self.dots.append(dot)
+
+        # --- AUTO RELEASE VISUAL ---
+        self.release_left_bar = None
+        self.release_right_bar = None
+        # ------------------------
+
+    def update(self, active):
+        color = "green" if active else "red"
+        for dot in self.dots:
+            self.canvas.itemconfig(dot, fill=color)
+        self.root.update()
+
+    def update_dimensions(self, area, scale):
+        w = int(area['width'] / scale)
+        h = int(area['height'] / scale)
+        x = int(area['left'] / scale)
+        y = int(area['top'] / scale)
+
+        # Resize the window
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.canvas.config(width=w, height=h)
+
+        # Reposition the 8 red dots
+        self.points = [
+            (0, 0), (w//2, 0), (w, 0),
+            (0, h//2), (w, h//2),
+            (0, h), (w//2, h), (w, h)
+        ]
+        for i, (px, py) in enumerate(self.points):
+            size = 2
+            self.canvas.coords(self.dots[i], px-size, py-size, px+size, py+size)
+
+    # --- AUTO RELEASE VISUAL ---
+    def draw_release_bars(self, x, y):
+        if self.release_left_bar:
+            self.canvas.delete(self.release_left_bar)
+            self.canvas.delete(self.release_right_bar)
+        size = 10
+        gap = 10
+
+        self.release_left_bar = self.canvas.create_rectangle(
+            x-gap-size, y-1,
+            x-gap, y+1,
+            fill="yellow", outline=""
+        )
+
+        self.release_right_bar = self.canvas.create_rectangle(
+            x+gap, y-1,
+            x+gap+size, y+1,
+            fill="yellow", outline=""
+        )
