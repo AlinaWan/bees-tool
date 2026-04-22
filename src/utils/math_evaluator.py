@@ -51,11 +51,11 @@ class MathEvaluator:
         raise ValueError("Unsupported expression")
 
     def evaluate(self, expression):
-        if not isinstance(expression, str):
-            return 0
-
         if isinstance(expression, (int, float)):
             return expression
+
+        if not isinstance(expression, str):
+            return 0
 
         try:
             tree = ast.parse(expression, mode="eval")
