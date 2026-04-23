@@ -178,20 +178,22 @@ def run_app():
                         center_x = max_loc[0] + w//2
                         start_x = center_x - 2
                 
-                        meter_pixels = []
-                        meter_colors = []
+                        scan_plan = [] # (x_offset, color_bgr)
                         
                         for i in range(4):
                             px = start_x + i
                             py = top_y
-                            
+
                             screen_x = right_half["left"] + px
                             b, g, r = meter_template[py - max_loc[1], px - max_loc[0]][:3]
-                            
-                            meter_pixels.append(screen_x)
-                            meter_colors.append((int(b), int(g), int(r)))
+
+                            scan_plan.append((
+                                screen_x,
+                                (int(b), int(g), int(r))
+                            ))
                             
                         meter_target_y = top_y 
+                        meter_scan_plan = scan_plan
                         meter_calibrated = True
 
             # Auto Release Check
@@ -201,42 +203,70 @@ def run_app():
                 Config.AUTO_RELEASE_ENABLED
                 and meter_calibrated
                 and time_since_last_slider > Config.MINIGAME_TIMEOUT_MS
-                and len(meter_pixels) == 4
             ):
-                
+
                 check_region = {
                     "top": meter_target_y,
-                    "left": min(meter_pixels),
-                    "width": (max(meter_pixels) - min(meter_pixels)) + 1,
+                    "left": min(x for x, _ in meter_scan_plan),
+                    "width": (max(x for x, _ in meter_scan_plan) - min(x for x, _ in meter_scan_plan)) + 1,
                     "height": Config.SEARCH_DEPTH
                 }
-                
-                roi_capture = sct.grab(check_region)
-                roi_img = np.array(roi_capture)[:, :, :3]
-                
+
+                roi = sct.grab(check_region)
+
+                buf = roi.raw
+                width = roi.width
+                height = roi.height
+                stride = width * 4
+
                 matches_found = 0
-                for i in range(4):
-                    target_color = np.array(meter_colors[i], dtype=np.int16)
-                    column_idx = meter_pixels[i] - check_region["left"]
-                    
-                    if 0 <= column_idx < roi_img.shape[1]:
-                        vertical_strip = roi_img[:, column_idx].astype(np.int16)
-                        diff = np.abs(vertical_strip - target_color)
-                        if np.any(np.all(diff <= Config.AUTO_RELEASE_TOLERANCE, axis=1)):
-                            matches_found += 1
+
+                tol = Config.AUTO_RELEASE_TOLERANCE
+                buf_local = buf
+
+                for x_global, (tb, tg, tr) in meter_scan_plan:
+
+                    x = x_global - check_region["left"]
+                    if x < 0 or x >= width:
+                        continue
+
+                    found = False
+
+                    for y in range(height):
+                        offset = y * stride + x * 4
+
+                        b = buf_local[offset]
+                        g = buf_local[offset + 1]
+                        r = buf_local[offset + 2]
+
+                        if (
+                            -tol <= (b - tb) <= tol and
+                            -tol <= (g - tg) <= tol and
+                            -tol <= (r - tr) <= tol
+                        ):
+                            found = True
+                            break
+
+                    if found:
+                        matches_found += 1
 
                 if matches_found == 4 and is_active:
                     ahk.click(button='left', direction='up')
                     time.sleep(0.05)
 
-                cx = meter_pixels[0]
+                # UI debug overlay
+                cx = meter_scan_plan[0][0]
                 cy = meter_target_y
+
                 local_x = cx - search_left
                 local_y = cy - search_top
                 vis_x = int(local_x / scale)
                 vis_y = int(local_y / scale)
-                
-                if 0 <= vis_x <= area_visual.canvas.winfo_width() and 0 <= vis_y <= area_visual.canvas.winfo_height():
+
+                if (
+                    0 <= vis_x <= area_visual.canvas.winfo_width()
+                    and 0 <= vis_y <= area_visual.canvas.winfo_height()
+                ):
                     area_visual.draw_release_bars(vis_x, vis_y)
 
             # Auto Routine
