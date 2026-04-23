@@ -174,7 +174,7 @@ def run_app():
 
                 if max_val >= Config.AUTO_RELEASE_CONFIDENCE:
                         h, w = meter_template_gray.shape
-                        top_y = max_loc[1]
+                        top_y = max_loc[1] + Config.AUTO_RELEASE_Y_OFFSET
                         center_x = max_loc[0] + w//2
                         start_x = center_x - 2
                 

@@ -49,20 +49,21 @@ Adjust the constants within the configuration file to align with your hardware's
 ### Meter Automation (Swing Release)
 <details>
   <summary>Click to view</summary>
-  
+
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_RELEASE_ENABLED` | Toggles the calibration and execution of the automated meter-release system. |
-| `AUTO_RELEASE_TOLERANCE` | The allowable RGB variance when identifying the green bar signature. |
+| `AUTO_RELEASE_TOLERANCE` | The maximum per-channel RGB deviation allowed when validating pixel matches. |
 | `AUTO_RELEASE_CONFIDENCE` | The normalized correlation threshold required for meter template calibration. |
-| `SEARCH_DEPTH` | The vertical pixel search range used to detect the rising meter. |
+| `AUTO_RELEASE_Y_OFFSET` | The vertical pixel shift that moves the sampling region downward from the detected meter anchor point. |
+| `SEARCH_DEPTH` | The number of vertical pixels scanned downward from the starting point when evaluating the meter column. |
 
 </details>
 
 ### Routine Automation (Traversal & Swing Execution)
 <details>
   <summary>Click to view</summary>
-  
+
 | Constant | Function |
 | :--- | :--- |
 | `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-swing routine (implicitly forces `AUTO_RELEASE_ENABLED`). |

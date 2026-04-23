@@ -19,7 +19,8 @@ class Config:
     AUTO_RELEASE_ENABLED = True                   # Enable the auto release module
     AUTO_RELEASE_TOLERANCE = 5                    # Tolerance for the optimized search
     AUTO_RELEASE_CONFIDENCE = 0.90                # Confidence for calibration
-    SEARCH_DEPTH = 20                             # Define how deep the search range is for the top of the meter
+    AUTO_RELEASE_Y_OFFSET = 30                    # The offset to move the scan region down to account for delay
+    SEARCH_DEPTH = 5                              # Define how deep the search range is for the top of the meter
 
     # --- Auto Routine ---
     AUTO_ROUTINE_ENABLED = False                   # Enable the subroutine module (forces Auto Release)

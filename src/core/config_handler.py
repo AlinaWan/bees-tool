@@ -39,6 +39,7 @@ class ConfigHandler:
         Config.AUTO_RELEASE_ENABLED = evaluator.evaluate(m["auto_release_enabled"])
         Config.AUTO_RELEASE_TOLERANCE = evaluator.evaluate(m["auto_release_tolerance"])
         Config.AUTO_RELEASE_CONFIDENCE = evaluator.evaluate(m["auto_release_confidence"])
+        Config.AUTO_RELEASE_Y_OFFSET = evaluator.evaluate(m["auto_release_y_offset"])
         Config.SEARCH_DEPTH = evaluator.evaluate(m["search_depth"])
 
         r = data["routine_settings"]
@@ -57,7 +58,7 @@ class ConfigHandler:
                 "custom_info": {
                     "author": "",
                     "net": "",
-                    "flower": "",
+                    "flower": ""
                 },
                 "app_info": {
                     "version": "1.0.0",
@@ -87,6 +88,7 @@ class ConfigHandler:
                 "auto_release_enabled": Config.AUTO_RELEASE_ENABLED,
                 "auto_release_tolerance": Config.AUTO_RELEASE_TOLERANCE,
                 "auto_release_confidence": Config.AUTO_RELEASE_CONFIDENCE,
+                "auto_release_y_offset": Config.AUTO_RELEASE_Y_OFFSET,
                 "search_depth": Config.SEARCH_DEPTH
             },
             "routine_settings": {
