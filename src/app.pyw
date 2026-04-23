@@ -24,6 +24,8 @@ from ui.tooltip_marker import TooltipMarker
 ahk = AHK()
 
 # Global State
+mutex_handle = None
+
 is_active = False
 should_exit = False
 last_slider_time = 0
@@ -347,6 +349,11 @@ def run_app():
 def cleanup():
     FileWatcher.stop_active_watcher()
 
+    global mutex_handle
+    if mutex_handle:
+        NativeMethods.release_mutex(mutex_handle)
+        NativeMethods.close_handle(mutex_handle)
+
 atexit.register(cleanup)
 
 if __name__ == "__main__":
@@ -355,6 +362,15 @@ if __name__ == "__main__":
         NativeMethods.set_process_dpi_awareness_context(-4)
     except Exception:
         pass
+
+    mutex, is_first_instance = NativeMethods.create_single_instance_mutex("Global\\7793b168-1b31-404f-b094-38675b5b6728")
+    if not is_first_instance:
+        NativeMethods.message_box(
+            "Another instance of Bees Tool is already running.",
+            "Error",
+            NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
+        )
+        exit(0)
 
     try:
         run_app()
@@ -388,6 +404,3 @@ if __name__ == "__main__":
             NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
         )
         raise
-
-    finally:
-        cleanup()

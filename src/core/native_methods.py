@@ -43,8 +43,10 @@ class NativeMethods:
     _WAIT_OBJECT_0: ReadOnly = 0x00000000
     _INFINITE: ReadOnly = 0xFFFFFFFF
 
-    INVALID_HANDLE_VALUE: ReadOnly = wintypes.HANDLE(-1).value
+    ERROR_ALREADY_EXISTS: ReadOnly = 183
 
+    INVALID_HANDLE_VALUE: ReadOnly = wintypes.HANDLE(-1).value
+    
     MB_ICONERROR: ReadOnly = 0x10
     MB_ICONWARNING: ReadOnly = 0x30
     MB_ICONINFORMATION: ReadOnly = 0x40
@@ -64,6 +66,15 @@ class NativeMethods:
 
     _dwmapi.DwmSetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
     _dwmapi.DwmSetWindowAttribute.restype = ctypes.HRESULT
+
+    _kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+    _kernel32.CreateMutexW.restype = wintypes.HANDLE
+
+    _kernel32.ReleaseMutex.argtypes = [wintypes.HANDLE]
+    _kernel32.ReleaseMutex.restype = wintypes.BOOL
+
+    _kernel32.GetLastError.argtypes = []
+    _kernel32.GetLastError.restype = wintypes.DWORD
 
     _kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     _kernel32.CloseHandle.restype = wintypes.BOOL
@@ -115,6 +126,29 @@ class NativeMethods:
     @staticmethod
     def byref(obj):
         return ctypes.byref(obj)
+
+    # Mutex related methods
+    @staticmethod
+    def create_mutex(name: str, initial_owner: bool = True):
+        return NativeMethods._kernel32.CreateMutexW(None, initial_owner, name)
+
+    @staticmethod
+    def release_mutex(handle):
+        return NativeMethods._kernel32.ReleaseMutex(handle)
+
+    @staticmethod
+    def get_last_error():
+        return NativeMethods._kernel32.GetLastError()
+
+    @staticmethod
+    def create_single_instance_mutex(name: str):
+        handle = NativeMethods.create_mutex(name, True)
+
+        if not handle:
+            return None, False
+
+        already_exists = (NativeMethods.get_last_error() == NativeMethods.ERROR_ALREADY_EXISTS)
+        return handle, not already_exists
 
     # Overlapped IO related methods
     @staticmethod
