@@ -8,20 +8,20 @@ class TooltipMarker:
         self.root.withdraw()
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True, "-transparentcolor", "black")
-        
+
         self.canvas = tk.Canvas(self.root, width=1000, height=1000, bg="black", highlightthickness=0)
         self.canvas.pack()
-        
+
         self.circle = self.canvas.create_oval(10, 10, 70, 70, outline="lime", width=2)
         self.debug_text = self.canvas.create_text(10, 75, anchor="nw", fill="lime", font=("Consolas", 8))
-        self.line = None 
-        
+        self.line = None
+
     def show(self, x, y, scale, angle=0, confidence=0, locked=False, in_bounds=True, drag_to=None, winner_idx=None):
         if not in_bounds:
             color = "red"
         else:
             color = "cyan" if locked else "lime"
-            
+
         self.canvas.itemconfig(self.circle, outline=color)
         self.canvas.itemconfig(self.debug_text, fill=color)
 
@@ -37,7 +37,7 @@ class TooltipMarker:
             self.canvas.delete(self.line)
             self.line = None
         if drag_to:
-            start_x, start_y = 40, 40 
+            start_x, start_y = 40, 40
             end_x = (drag_to[0] - x) / scale + start_x
             end_y = (drag_to[1] - y) / scale + start_y
             line_color = "red" if not in_bounds else "cyan"
@@ -50,5 +50,7 @@ class TooltipMarker:
 
     def hide(self):
         self.root.withdraw()
-        try: self.root.update()
-        except: pass
+        try:
+            self.root.update()
+        except Exception:
+            pass

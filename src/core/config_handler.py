@@ -50,7 +50,8 @@ class ConfigHandler:
         if Config.AUTO_ROUTINE_ENABLED:
             Config.AUTO_RELEASE_ENABLED = True
 
-    def build_current_config():
+    @staticmethod
+    def _build_current_config():
         return {
             "metadata": {
                 "custom_info": {
@@ -97,7 +98,7 @@ class ConfigHandler:
         }
 
     @staticmethod
-    def reload_from_disk(path):
+    def _reload_from_disk(path):
         try:
             with open(path, "r") as f:
                 data = json.load(f)
@@ -122,40 +123,41 @@ class ConfigHandler:
         FileWatcher.stop_active_watcher()
 
         # load once immediately
-        ConfigHandler.reload_from_disk(path)
+        ConfigHandler._reload_from_disk(path)
         current_config_path = path
 
         # this ensures that if the user edits the NEW file in Notepad, it updates live.
         FileWatcher._thread = threading.Thread(
-            target=FileWatcher.watch_file_changes, 
-            args=(path, ConfigHandler.reload_from_disk), 
+            target=FileWatcher.watch_file_changes,
+            args=(path, ConfigHandler._reload_from_disk),
             daemon=True
         )
         FileWatcher._thread.start()
 
+    @staticmethod
     def edit_config():
         global current_config_path, config_data
-    
+
         # 1. If no file is loaded, create one first
         if not current_config_path:
             timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
             default_name = f"Bees_Tool_Config_{timestamp}.json"
-        
+
             path = filedialog.asksaveasfilename(
                 initialdir=Constants.SCRIPT_DIR,
                 initialfile=default_name,
                 defaultextension=".json",
                 filetypes=[("JSON Config", "*.json")]
             )
-        
+
             if not path:
                 return # User cancelled the dialog
 
             # 2. Write the current script settings to the new file
-            config = ConfigHandler.build_current_config()
+            config = ConfigHandler._build_current_config()
             with open(path, "w") as f:
                 json.dump(config, f, indent=4)
-        
+
             # 3. Point the script to this new file
             current_config_path = path
             print(f"[ConfigHandler::Edit] Created and loaded config: {path}")
@@ -168,12 +170,13 @@ class ConfigHandler:
         if FileWatcher._thread is None or not FileWatcher._thread.is_alive():
             FileWatcher._cts.clear()
             FileWatcher._thread = threading.Thread(
-                target=FileWatcher.watch_file_changes, 
-                args=(current_config_path, ConfigHandler.reload_from_disk),
+                target=FileWatcher.watch_file_changes,
+                args=(current_config_path, ConfigHandler._reload_from_disk),
                 daemon=True
             )
             FileWatcher._thread.start()
 
+    @staticmethod
     def open_help():
         github_url = "https://github.com/AlinaWan/bees-tool#readme"
         webbrowser.open(github_url)

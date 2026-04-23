@@ -35,7 +35,7 @@ class MenuOverlay:
             self.root.update_idletasks()
             hwnd = NativeMethods.get_parent(self.root.winfo_id()) # Get the actual window handle to apply
             NativeMethods.apply_rounded_corners(hwnd)
-        except:
+        except Exception:
             pass
 
         header = tk.Label(
@@ -49,7 +49,7 @@ class MenuOverlay:
         header.pack()
 
         btn_frame = tk.Frame(self.root, bg=BG_COLOR)
-        btn_frame.pack(pady=5) 
+        btn_frame.pack(pady=5)
 
         def rounded_rect(canvas, x1, y1, x2, y2, r, **kwargs):
             points = [x1+r, y1, x1+r, y1, x2-r, y1, x2-r, y1, x2, y1, x2, y1+r, x2, y1+r, x2, y2-r, x2, y2-r, x2, y2, x2-r, y2, x2-r, y2, x1+r, y2, x1+r, y2, x1, y2, x1, y2-r, x1, y2-r, x1, y1+r, x1, y1+r, x1, y1]
@@ -60,7 +60,7 @@ class MenuOverlay:
 
             size = 110
             radius = 20
-            
+
             container = tk.Frame(parent, bg=BG_COLOR)
             container.pack(side="left", padx=5)
 
@@ -75,7 +75,7 @@ class MenuOverlay:
             txt = canvas.create_text(size/2, size/2 + 22, text=label_text, font=("Segoe UI Semibold", 8), fill=LABEL_GREY)
 
             original_label = label_text
-            original_emoji = emoji
+            original_emoji = emoji # noqa: F841
 
             def on_press(e):
                 canvas.itemconfig(rect, fill=PRESSED_COLOR)
@@ -86,24 +86,24 @@ class MenuOverlay:
                 canvas.itemconfig(rect, fill="white")
                 canvas.move(icon, -1, -1)
                 canvas.move(txt, -1, -1)
-            
+
                 if validator:
                     ok, msg = validator()
                     if not ok:
                         flash_message(msg)
                         return
-            
+
                 command()
 
             def flash_message(msg, duration=2000):
                 canvas.itemconfig(txt, text=msg)
-            
+
                 def restore():
                     try:
                         canvas.itemconfig(txt, text=original_label)
                     except tk.TclError:
                         pass
-            
+
                 after_id = canvas.after(duration, restore)
                 self.after_ids.append(after_id)
 
@@ -126,7 +126,7 @@ class MenuOverlay:
     def _execute_toggle(self):
         if not self.alive:
             return
-    
+
         try:
             if self.visible:
                 self.root.withdraw()
@@ -135,16 +135,16 @@ class MenuOverlay:
             self.visible = not self.visible
         except tk.TclError:
             self.alive = False
-    
+
         self.toggle_requested = False
 
     def update(self):
         if not self.alive:
             return
-    
+
         if self.toggle_requested:
             self._execute_toggle()
-    
+
         try:
             self.root.update()
         except tk.TclError:

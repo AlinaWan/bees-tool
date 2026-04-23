@@ -3,7 +3,7 @@ import time
 import threading
 from typing import final as sealed
 
-from core.native_methods import NativeMethods, OVERLAPPED
+from core.native_methods import NativeMethods
 
 @sealed
 class FileWatcher:
@@ -26,7 +26,7 @@ class FileWatcher:
     @staticmethod
     def watch_file_changes(file_to_watch, on_change_callback):
         FileWatcher._cts.clear() # Reset the Token
-    
+
         file_to_watch = os.path.abspath(file_to_watch)
         dir_to_watch = os.path.dirname(file_to_watch)
         filename_to_watch = os.path.basename(file_to_watch)
@@ -53,7 +53,7 @@ class FileWatcher:
 
                     # IMPORTANT: Check if the modified file is EXACTLY the one we care about
                     if raw_filename.lower() == filename_to_watch.lower():
-                        time.sleep(0.1) 
+                        time.sleep(0.1)
                         on_change_callback(file_to_watch)
 
                     NativeMethods.reset_event(h_overlap_event)

@@ -75,17 +75,21 @@ def run_app():
 
     listener = HotkeyListener(toggle_logic, exit_logic, menu.toggle)
     listener.start()
+    listener.status_event.wait(timeout=0.5)
+    if not listener.success:
+        raise RuntimeError("Failed to register hotkeys.\n\nCheck if another program is using the same keys.")
 
     raw_template = cv2.imread(Constants.TARGET_PATH, cv2.IMREAD_GRAYSCALE)
-    if raw_template is None: return
+    if raw_template is None:
+        raise Exception(f"Can't open/read file: {Constants.TARGET_PATH}\n\nCheck file path/integrity.")
     
     template_cache = pre_rotate_templates(raw_template)
 
     meter_template = cv2.imread(Constants.METER_IMAGE_PATH)
-    if meter_template is not None:
-        meter_template_gray = cv2.cvtColor(meter_template, cv2.COLOR_BGR2GRAY)
+    if meter_template is None:
+        raise Exception(f"Can't open/read file: {Constants.METER_IMAGE_PATH}\n\nCheck file path/integrity.")
     else:
-        meter_template_gray = None
+        meter_template_gray = cv2.cvtColor(meter_template, cv2.COLOR_BGR2GRAY)
 
     ahk.run_script("CoordMode, Mouse, Screen")
 
@@ -346,6 +350,7 @@ def cleanup():
 atexit.register(cleanup)
 
 if __name__ == "__main__":
+    # This should be called BEFORE ANYTHING ELSE
     try:
         NativeMethods.set_process_dpi_awareness_context(-4)
     except Exception:
@@ -366,7 +371,9 @@ if __name__ == "__main__":
             raise # raise directly so we get a nicely colored traceback instead of plain text
         else:
             NativeMethods.message_box(
-                f"An OpenCV error occurred: {e}",
+                "An OpenCV error occurred during runtime:\n\n" +
+                f"{e}\n\n" +
+                "The program will now close.",
                 "Fatal Error",
                 NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
             )
@@ -374,7 +381,9 @@ if __name__ == "__main__":
 
     except Exception as e:
         NativeMethods.message_box(
-            f"An unexpected error occurred: {e}",
+            "An unexpected error occurred during runtime:\n\n" +
+            f"{e}\n\n" +
+            "The program will now close.",
             "Fatal Error",
             NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
         )

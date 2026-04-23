@@ -248,11 +248,9 @@ class NativeMethods:
     def get_system_metrics(index):
         return NativeMethods._user32.GetSystemMetrics(index)
 
-
     @staticmethod
     def get_screen_width():
         return NativeMethods.get_system_metrics(0)
-
 
     @staticmethod
     def get_screen_height():

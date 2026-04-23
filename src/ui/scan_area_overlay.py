@@ -8,12 +8,12 @@ class ScanAreaOverlay:
         self.root = tk.Tk()
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True, "-transparentcolor", "black")
-        
+
         w = int(area['width'] / scale)
         h = int(area['height'] / scale)
         x = int(area['left'] / scale)
         y = int(area['top'] / scale)
-        
+
         self.root.geometry(f"{w}x{h}+{x}+{y}")
 
         self.canvas = tk.Canvas(self.root, width=w, height=h, bg="black", highlightthickness=0)

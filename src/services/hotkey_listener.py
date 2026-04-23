@@ -5,12 +5,14 @@ from core.native_methods import NativeMethods
 
 @sealed
 class HotkeyListener(threading.Thread):
-
     def __init__(self, toggle_cb, exit_cb, menu_cb):
         super().__init__(daemon=True)
         self.toggle_cb = toggle_cb
         self.exit_cb = exit_cb
         self.menu_cb = menu_cb
+        
+        self.status_event = threading.Event()
+        self.success = False
 
     def run(self):
         # ID 1: F6 (Toggle Logic)
@@ -23,21 +25,24 @@ class HotkeyListener(threading.Thread):
         ]
 
         if not all(results):
-            NativeMethods.message_box(
-                "Failed to register hotkeys.\n\nCheck if another program is using the same keys.", 
-                "Hotkey Error", 
-                NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
-            )
+            self.success = False
+            self.status_event.set()
+            return
+
+        self.success = True
+        self.status_event.set()
 
         msg = NativeMethods.create_msg()
         while NativeMethods.get_message(msg) != 0:
             if msg.message == NativeMethods.WM_HOTKEY:
-                if msg.wParam == 1: self.toggle_cb()
-                elif msg.wParam == 2: self.exit_cb()
-                elif msg.wParam == 3: self.menu_cb()
+                if msg.wParam == 1:
+                    self.toggle_cb()
+                elif msg.wParam == 2:
+                    self.exit_cb()
+                elif msg.wParam == 3:
+                    self.menu_cb()
             NativeMethods.translate_message(msg)
             NativeMethods.dispatch_message(msg)
         
-        NativeMethods.unregister_hotkey(None, 1)
-        NativeMethods.unregister_hotkey(None, 2)
-        NativeMethods.unregister_hotkey(None, 3)
+        for i in range(1, 4):
+            NativeMethods.unregister_hotkey(None, i)
