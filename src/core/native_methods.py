@@ -392,7 +392,7 @@ class NativeMethods:
         return True
 
     @staticmethod
-    def initiate_system_shutdown(timeout_sec=15, message="Roblox closed"):
+    def initiate_system_shutdown(timeout_sec=15, message="Shutting down."):
         return NativeMethods._advapi32.InitiateSystemShutdownExW(
             None,
             message,
