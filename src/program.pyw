@@ -3,8 +3,8 @@ __version__ = "1.0.0"
 __author__ = "Riri"
 __license__ = "MIT"
 
+from ast import Constant
 import atexit
-from multiprocessing import Process
 import threading
 import time
 from typing import final as sealed
@@ -142,7 +142,13 @@ class Program:
         listener.start()
         listener.status_event.wait(timeout=0.5)
         if not listener.success:
-            raise RuntimeError("Failed to register hotkeys.\n\nCheck if another program is using the same keys.")
+            NativeMethods.message_box(
+                    "Failed to register one or more hotkeys.\n\n" +
+                    "This is usually because another program is already using them. " +
+                    "Try checking if another program is using the same keys.",
+                    "Warning",
+                    NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
+                )
 
         self.raw_template = cv2.imread(Constants.TARGET_PATH, cv2.IMREAD_GRAYSCALE)
         if self.raw_template is None:
@@ -173,17 +179,18 @@ class Program:
 
             self.area_visual = ScanAreaOverlay(self.search_area, self.scale)
 
-            if (Config.EXIT_ON_ROBLOX_CLOSE or Config.SHUTDOWN_ON_ROBLOX_CLOSE) and (pid := ProcessLocator.get_process_pid("RobloxPlayerBeta.exe")):
-                self.process_monitor.start(pid, on_exit=self._on_roblox_exit)
-            else:
-                NativeMethods.message_box(
-                    "Failed to get Roblox process ID for process monitoring.\n\n" +
-                    "This is usually because Roblox was not open during launch. " +
-                    "Try opening Roblox first, then launching the program.",
-                    "Warning",
-                    NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
-                )
-                pass
+            if (Config.EXIT_ON_ROBLOX_CLOSE or Config.SHUTDOWN_ON_ROBLOX_CLOSE):
+                if (pid := ProcessLocator.get_process_pid("RobloxPlayerBeta.exe")):
+                    self.process_monitor.start(pid, on_exit=self._on_roblox_exit)
+                else:
+                    NativeMethods.message_box(
+                        "Failed to get Roblox process ID for process monitoring.\n\n" +
+                        "This is usually because Roblox was not open during launch. " +
+                        "Try opening Roblox first, then launching the program.",
+                        "Warning",
+                        NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
+                    )
+                    pass
         
             while not self.should_exit:
                 self.recache_manager.flush()
@@ -447,14 +454,14 @@ class Program:
         except Exception:
             pass
 
-        mutex, is_first_instance = NativeMethods.create_single_instance_mutex("Global\\7793b168-1b31-404f-b094-38675b5b6728")
+        mutex, is_first_instance = NativeMethods.create_single_instance_mutex(f"Global\\{Constants.GUID}")
         if not is_first_instance:
             NativeMethods.message_box(
                 "Another instance of Bees Tool is already running.",
-                "Error",
-                NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
+                "Already Running",
+                NativeMethods.MB_OK | NativeMethods.MB_ICONINFORMATION
             )
-            exit(0)
+            raise SystemExit(0)
 
         app = Program()
         app.mutex_handle = mutex

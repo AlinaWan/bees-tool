@@ -13,3 +13,6 @@ class Constants:
 
     SCREEN_WIDTH: ReadOnly = NativeMethods.get_screen_width()
     SCREEN_HEIGHT: ReadOnly = NativeMethods.get_screen_height()
+
+    GUID: ReadOnly = "7793b168-1b31-404f-b094-38675b5b6728"
+    GITHUB_URL: ReadOnly = "https://github.com/AlinaWan/bees-tool"

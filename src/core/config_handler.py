@@ -195,7 +195,7 @@ class ConfigHandler:
 
     @staticmethod
     def open_help():
-        github_url = "https://github.com/AlinaWan/bees-tool#readme"
+        github_url = f"{Constants.GITHUB_URL}#readme"
         webbrowser.open(github_url)
 
     @staticmethod
