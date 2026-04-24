@@ -32,6 +32,7 @@
     <Compile Include="src\core\__init__.py" />
     <Compile Include="src\services\file_watcher.py" />
     <Compile Include="src\services\hotkey_listener.py" />
+    <Compile Include="src\services\process_monitor.py" />
     <Compile Include="src\services\recache_manager.py" />
     <Compile Include="src\services\__init__.py" />
     <Compile Include="src\ui\menu_overlay.py" />
@@ -39,6 +40,8 @@
     <Compile Include="src\ui\tooltip_marker.py" />
     <Compile Include="src\ui\__init__.py" />
     <Compile Include="src\utils\math_evaluator.py" />
+    <Compile Include="src\utils\process_locator.py" />
+    <Compile Include="src\utils\system_controller.py" />
     <Compile Include="src\utils\__init__.py" />
     <Compile Include="src\__init__.py" />
   </ItemGroup>

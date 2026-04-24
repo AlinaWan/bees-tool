@@ -49,6 +49,10 @@ class ConfigHandler:
         Config.AUTO_ROUTINE_WALK_TIME_MS = evaluator.evaluate(r["walk_time_ms"])
         Config.AUTO_ROUTINE_LMB_TIMEOUT_MS = evaluator.evaluate(r["lmb_timeout_ms"])
 
+        b = data["behavior_settings"]
+        Config.EXIT_ON_ROBLOX_CLOSE = evaluator.evaluate(b["exit_on_roblox_close"])
+        Config.SHUTDOWN_ON_ROBLOX_CLOSE = evaluator.evaluate(b["shutdown_on_roblox_close"])
+
         if Config.AUTO_ROUTINE_ENABLED:
             Config.AUTO_RELEASE_ENABLED = True
 
@@ -97,6 +101,10 @@ class ConfigHandler:
                 "pattern": list(Config.AUTO_ROUTINE_PATTERN),
                 "walk_time_ms": Config.AUTO_ROUTINE_WALK_TIME_MS,
                 "lmb_timeout_ms": Config.AUTO_ROUTINE_LMB_TIMEOUT_MS
+            },
+            "behavior_settings": {
+                "exit_on_roblox_close": Config.EXIT_ON_ROBLOX_CLOSE,
+                "shutdown_on_roblox_close": Config.SHUTDOWN_ON_ROBLOX_CLOSE
             }
         }
 

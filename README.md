@@ -73,6 +73,17 @@ Adjust the constants within the configuration file to align with your hardware's
 
 </details>
 
+### Behavior Preferences
+<details>
+  <summary>Click to view</summary>
+
+| Constant | Function |
+| :--- | :--- |
+| `EXIT_ON_ROBLOX_CLOSE` | Shuts down the program if the current Roblox process ID is killed. |
+| `SHUTDOWN_ON_ROBLOX_CLOSE` | Sends the shutdown signal with a 15 second timer if the current Roblox process ID is killed. |
+
+</details>
+
 ### Installation
 
 1.  Ensure `target.png` (the visual signature of your entity) is present in the resources directory.
@@ -90,6 +101,7 @@ Adjust the constants within the configuration file to align with your hardware's
 | <kbd>F6</kbd>                     | **Toggle State**: Switches the tool between Active (Green) and Standby (Red).                        |
 | <kbd>Ctrl</kbd> + <kbd>F10</kbd>  | **Menu Toggle**: Shows or hides the menu for importing, editing, and saving configurations           |
 | <kbd>Shift</kbd> + <kbd>Esc</kbd> | **Termination**: Immediately closes the script and destroys all overlay windows.                     |
+| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | **Cancel Shutdown**: Immediately aborts scheduled shutdown. |
 
 -----
 

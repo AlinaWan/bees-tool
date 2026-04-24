@@ -18,10 +18,33 @@ class OVERLAPPED(ctypes.Structure):
     ]
 
 @sealed
+class LUID(ctypes.Structure):
+    _fields_ = [
+        ("LowPart", wintypes.DWORD),
+        ("HighPart", wintypes.LONG),
+    ]
+
+@sealed
+class LUID_AND_ATTRIBUTES(ctypes.Structure):
+    _fields_ = [
+        ("Luid", LUID),
+        ("Attributes", wintypes.DWORD),
+    ]
+
+@sealed
+class TOKEN_PRIVILEGES(ctypes.Structure):
+    _fields_ = [
+        ("PrivilegeCount", wintypes.DWORD),
+        ("Privileges", LUID_AND_ATTRIBUTES * 1),
+    ]
+
+@sealed
 class NativeMethods:
 
+    _advapi32: ReadOnly = ctypes.WinDLL("advapi32")
     _dwmapi: ReadOnly = ctypes.WinDLL("dwmapi")
     _kernel32: ReadOnly = ctypes.WinDLL("kernel32")
+    _psapi: ReadOnly = ctypes.WinDLL("psapi")
     _user32: ReadOnly = ctypes.WinDLL("user32")
 
     _DWMWA_WINDOW_CORNER_PREFERENCE: ReadOnly = 33
@@ -38,6 +61,14 @@ class NativeMethods:
     _OPEN_EXISTING: ReadOnly = 3
     _FILE_FLAG_BACKUP_SEMANTICS: ReadOnly = 0x02000000
     _FILE_NOTIFY_CHANGE_LAST_WRITE: ReadOnly = 0x00000010
+
+    _TOKEN_ADJUST_PRIVILEGES: ReadOnly = 0x20
+    _TOKEN_QUERY: ReadOnly = 0x8
+    _SE_PRIVILEGE_ENABLED: ReadOnly = 0x2
+
+    _PROCESS_QUERY_INFORMATION: ReadOnly = 0x0400
+    _PROCESS_VM_READ: ReadOnly = 0x0010
+    _SYNCHRONIZE: ReadOnly = 0x00100000
 
     _FILE_FLAG_OVERLAPPED: ReadOnly = 0x40000000
     _WAIT_OBJECT_0: ReadOnly = 0x00000000
@@ -60,9 +91,25 @@ class NativeMethods:
     WM_HOTKEY: ReadOnly = 0x0312
     MOD_SHIFT: ReadOnly = 0x0004
     MOD_CONTROL: ReadOnly = 0x0002
+    VK_KEY_X: ReadOnly = 0x58
     VK_F6: ReadOnly = 0x75
     VK_F10: ReadOnly = 0x79
     VK_ESCAPE: ReadOnly = 0x1B
+
+    _advapi32.InitiateSystemShutdownExW.argtypes = [wintypes.LPWSTR, wintypes.LPWSTR, wintypes.DWORD, wintypes.BOOL, wintypes.BOOL, wintypes.DWORD]
+    _advapi32.InitiateSystemShutdownExW.restype = wintypes.BOOL
+
+    _advapi32.AbortSystemShutdownW.argtypes = [wintypes.LPWSTR]
+    _advapi32.AbortSystemShutdownW.restype = wintypes.BOOL
+
+    _advapi32.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+    _advapi32.OpenProcessToken.restype = wintypes.BOOL
+
+    _advapi32.LookupPrivilegeValueW.argtypes = [wintypes.LPWSTR, wintypes.LPWSTR, ctypes.POINTER(LUID)]
+    _advapi32.LookupPrivilegeValueW.restype = wintypes.BOOL
+
+    _advapi32.AdjustTokenPrivileges.argtypes = [wintypes.HANDLE, wintypes.BOOL, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p, ctypes.c_void_p]
+    _advapi32.AdjustTokenPrivileges.restype = wintypes.BOOL
 
     _dwmapi.DwmSetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
     _dwmapi.DwmSetWindowAttribute.restype = ctypes.HRESULT
@@ -99,6 +146,18 @@ class NativeMethods:
 
     _kernel32.ReadDirectoryChangesW.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD, wintypes.BOOL, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(OVERLAPPED), wintypes.LPVOID]
     _kernel32.ReadDirectoryChangesW.restype = wintypes.BOOL
+
+    _kernel32.GetCurrentProcess.argtypes = []
+    _kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+
+    _kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    _kernel32.OpenProcess.restype = wintypes.HANDLE
+
+    _psapi.EnumProcesses.argtypes = [ctypes.POINTER(wintypes.DWORD), wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+    _psapi.EnumProcesses.restype = wintypes.BOOL
+
+    _psapi.GetModuleBaseNameW.argtypes = [wintypes.HANDLE, wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+    _psapi.GetModuleBaseNameW.restype = wintypes.DWORD
 
     _user32.RegisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int, wintypes.UINT, wintypes.UINT]
     _user32.RegisterHotKey.restype = wintypes.BOOL
@@ -251,6 +310,101 @@ class NativeMethods:
     @staticmethod
     def close_handle(handle):
         NativeMethods._kernel32.CloseHandle(handle)
+
+    # Process management related methods
+    @staticmethod
+    def get_all_pids():
+        pids = (wintypes.DWORD * 1024)()
+        cb = ctypes.sizeof(pids)
+        bytes_returned = wintypes.DWORD()
+        
+        if NativeMethods._psapi.EnumProcesses(pids, cb, ctypes.byref(bytes_returned)):
+            count = bytes_returned.value // ctypes.sizeof(wintypes.DWORD)
+            return [pids[i] for i in range(count)]
+        return []
+
+    @staticmethod
+    def get_process_name(pid: int) -> str:
+        handle = NativeMethods._kernel32.OpenProcess(
+            NativeMethods._PROCESS_QUERY_INFORMATION | NativeMethods._PROCESS_VM_READ, 
+            False, 
+            pid
+        )
+        if not handle:
+            return ""
+
+        name_buffer = ctypes.create_unicode_buffer(260)
+        success = NativeMethods._psapi.GetModuleBaseNameW(handle, None, name_buffer, 260)
+        NativeMethods._kernel32.CloseHandle(handle)
+        
+        return name_buffer.value if success else ""
+
+    @staticmethod
+    def open_process(pid):
+        return NativeMethods._kernel32.OpenProcess(
+            NativeMethods._SYNCHRONIZE,
+            False,
+            pid
+        )
+
+    @staticmethod
+    def wait_for_single_object(handle, timeout=_INFINITE):
+        return NativeMethods._kernel32.WaitForSingleObject(handle, timeout)
+
+    @staticmethod
+    def enable_shutdown_privilege():
+        token = wintypes.HANDLE()
+
+        # Open current process token
+        if not NativeMethods._advapi32.OpenProcessToken(
+            NativeMethods._kernel32.GetCurrentProcess(),
+            NativeMethods._TOKEN_ADJUST_PRIVILEGES | NativeMethods._TOKEN_QUERY,
+            ctypes.byref(token)
+        ):
+            return False
+
+        luid = LUID()
+
+        # Lookup shutdown privilege
+        if not NativeMethods._advapi32.LookupPrivilegeValueW(
+            None,
+            "SeShutdownPrivilege",
+            ctypes.byref(luid)
+        ):
+            return False
+
+        tp = TOKEN_PRIVILEGES()
+        tp.PrivilegeCount = 1
+        tp.Privileges[0].Luid = luid
+        tp.Privileges[0].Attributes = NativeMethods._SE_PRIVILEGE_ENABLED
+
+        # Enable privilege
+        if not NativeMethods._advapi32.AdjustTokenPrivileges(
+            token,
+            False,
+            ctypes.byref(tp),
+            0,
+            None,
+            None
+        ):
+            return False
+
+        return True
+
+    @staticmethod
+    def initiate_system_shutdown(timeout_sec=15, message="Roblox closed"):
+        return NativeMethods._advapi32.InitiateSystemShutdownExW(
+            None,
+            message,
+            timeout_sec,
+            True,   # force close apps
+            False,  # shutdown (not reboot)
+            0
+        )
+
+    @staticmethod
+    def abort_system_shutdown():
+        return NativeMethods._advapi32.AbortSystemShutdownW(None)
 
     # Hotkey related methods
     @staticmethod

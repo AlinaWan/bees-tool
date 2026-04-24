@@ -4,6 +4,7 @@ __author__ = "Riri"
 __license__ = "MIT"
 
 import atexit
+from multiprocessing import Process
 import threading
 import time
 from typing import final as sealed
@@ -19,15 +20,20 @@ from core.constants import Constants
 from core.native_methods import NativeMethods
 from services.file_watcher import FileWatcher
 from services.hotkey_listener import HotkeyListener
+from services.process_monitor import ProcessMonitor
 from services.recache_manager import RecacheManager
 from ui.menu_overlay import MenuOverlay
 from ui.scan_area_overlay import ScanAreaOverlay
 from ui.tooltip_marker import TooltipMarker
+from utils.process_locator import ProcessLocator
+from utils.system_controller import SystemController
 
 @sealed
 class Program:
     def __init__(self):
         self.ahk = AHK()
+        self.process_monitor = ProcessMonitor()
+        self.system_controller = SystemController()
 
         self.mutex_handle = None
 
@@ -71,6 +77,19 @@ class Program:
 
     def exit_logic(self):
         self.should_exit = True
+
+    def _on_roblox_exit(self):
+        if Config.EXIT_ON_ROBLOX_CLOSE:
+            self.should_exit = True
+
+        if Config.SHUTDOWN_ON_ROBLOX_CLOSE:
+            self.system_controller.start_shutdown(
+                15,
+                "Shutting down.\n\nPress Ctrl+Shift+X to abort."
+            )
+
+    def cancel_shutdown(self):
+        self.system_controller.cancel_shutdown()
 
     @staticmethod
     def pre_rotate_templates(template):
@@ -119,7 +138,7 @@ class Program:
         marker = TooltipMarker()
         menu = MenuOverlay(ConfigHandler.load_config, ConfigHandler.edit_config, ConfigHandler.open_help)
 
-        listener = HotkeyListener(self.toggle_logic, self.exit_logic, menu.toggle)
+        listener = HotkeyListener(self.toggle_logic, self.exit_logic, menu.toggle, self.cancel_shutdown)
         listener.start()
         listener.status_event.wait(timeout=0.5)
         if not listener.success:
@@ -153,6 +172,18 @@ class Program:
             self._recache()
 
             self.area_visual = ScanAreaOverlay(self.search_area, self.scale)
+
+            if (Config.EXIT_ON_ROBLOX_CLOSE or Config.SHUTDOWN_ON_ROBLOX_CLOSE) and (pid := ProcessLocator.get_process_pid("RobloxPlayerBeta.exe")):
+                self.process_monitor.start(pid, on_exit=self._on_roblox_exit)
+            else:
+                NativeMethods.message_box(
+                    "Failed to get Roblox process ID for process monitoring.\n\n" +
+                    "This is usually because Roblox was not open during launch. " +
+                    "Try opening Roblox first, then launching the program.",
+                    "Warning",
+                    NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
+                )
+                pass
         
             while not self.should_exit:
                 self.recache_manager.flush()
@@ -400,6 +431,9 @@ class Program:
 
     def cleanup(self):
         FileWatcher.stop_active_watcher()
+
+        if self.process_monitor:
+            self.process_monitor.stop()
 
         if self.mutex_handle:
             NativeMethods.release_mutex(self.mutex_handle)

@@ -33,6 +33,10 @@ class Config:
     AUTO_ROUTINE_WALK_TIME_MS = 250               # Time to hold each walk key
     AUTO_ROUTINE_LMB_TIMEOUT_MS = 3000            # Time a minigame hasn't appeared to give up this cycle
 
+    # --- Behavior Preference ---
+    EXIT_ON_ROBLOX_CLOSE = False                  # Kill the process if the Roblox PID dies
+    SHUTDOWN_ON_ROBLOX_CLOSE = False              # Send the shutdown signal after a countdown if the Roblox PID dies
+
     # Implicitly force AUTO_RELEASE if AUTO_ROUTINE
     if AUTO_ROUTINE_ENABLED:
         AUTO_RELEASE_ENABLED = True
