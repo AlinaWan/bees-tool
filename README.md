@@ -78,7 +78,7 @@ Adjust the constants within the configuration file to align with your hardware's
 1.  Ensure `target.png` (the visual signature of your entity) is present in the resources directory.
 2.  Initialize the script via terminal:
     ```bash
-    python app.pyw
+    python program.pyw
     ```
 
 -----

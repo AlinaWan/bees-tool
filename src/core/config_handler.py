@@ -14,6 +14,7 @@ from utils.math_evaluator import MathEvaluator
 
 current_config_path = None
 config_data = None
+recache_manager = None
 
 evaluator = MathEvaluator({
     "SCREEN_WIDTH": Constants.SCREEN_WIDTH,
@@ -104,8 +105,14 @@ class ConfigHandler:
         try:
             with open(path, "r") as f:
                 data = json.load(f)
+
             ConfigHandler.apply_config(data)
+
+            if recache_manager:
+                recache_manager.trigger()
+
             print(f"[ConfigHandler::Reload] Live-reloaded: {os.path.basename(path)}")
+
         except Exception as e:
             print(f"[ConfigHandler::Reload] Reload error: {e}")
 
@@ -182,3 +189,8 @@ class ConfigHandler:
     def open_help():
         github_url = "https://github.com/AlinaWan/bees-tool#readme"
         webbrowser.open(github_url)
+
+    @staticmethod
+    def set_recache_manager(manager):
+        global recache_manager
+        recache_manager = manager
