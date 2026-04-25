@@ -34,8 +34,10 @@ class Config:
     AUTO_ROUTINE_LMB_TIMEOUT_MS = 3000            # Time a minigame hasn't appeared to give up this cycle
 
     # --- Behavior Preference ---
-    EXIT_ON_ROBLOX_CLOSE = False                  # Kill the process if the Roblox PID dies
-    SHUTDOWN_ON_ROBLOX_CLOSE = False              # Send the shutdown signal after a countdown if the Roblox PID dies
+    EXIT_ON_ROBLOX_DISCONNECT = False            # Kill the process if Roblox indicates a disconnect
+    SHUTDOWN_ON_ROBLOX_DISCONNECT = False        # Send the shutdown signal after a countdown if Roblox indicates a disconnect
+    EXIT_ON_ROBLOX_KILL = False                  # Kill the process if the Roblox PID dies
+    SHUTDOWN_ON_ROBLOX_KILL = False              # Send the shutdown signal after a countdown if the Roblox PID dies
 
     # Implicitly force AUTO_RELEASE if AUTO_ROUTINE
     if AUTO_ROUTINE_ENABLED:

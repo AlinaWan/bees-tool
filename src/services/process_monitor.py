@@ -11,7 +11,7 @@ class ProcessMonitor:
 
     # ---------- Public API ----------
 
-    def start(self, pid: int, on_exit: Callable[[], None]):
+    def start(self, pid: int, on_kill: Callable[[], None]):
         """Start monitoring a process by PID."""
         if self._thread and self._thread.is_alive():
             return
@@ -20,7 +20,7 @@ class ProcessMonitor:
 
         self._thread = threading.Thread(
             target=self._worker,
-            args=(pid, on_exit),
+            args=(pid, on_kill),
             daemon=True
         )
         self._thread.start()
@@ -35,7 +35,7 @@ class ProcessMonitor:
 
     # ---------- Internal ----------
 
-    def _worker(self, pid: int, on_exit: Callable[[], None]):
+    def _worker(self, pid: int, on_kill: Callable[[], None]):
         handle = NativeMethods.open_process(pid)
 
         if not handle:
@@ -54,7 +54,7 @@ class ProcessMonitor:
         print("[ProcessMonitor] Process exited")
 
         try:
-            on_exit()
+            on_kill()
         finally:
             NativeMethods.close_handle(handle)
             self._process_handle = None

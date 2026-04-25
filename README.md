@@ -79,8 +79,10 @@ Adjust the constants within the configuration file to align with your hardware's
 
 | Constant | Function |
 | :--- | :--- |
-| `EXIT_ON_ROBLOX_CLOSE` | Shuts down the program if the current Roblox process ID is killed. |
-| `SHUTDOWN_ON_ROBLOX_CLOSE` | Sends the shutdown signal with a 15 second timer if the current Roblox process ID is killed. |
+| `EXIT_ON_ROBLOX_DISCONNECT` | Shuts down the program if the current Roblox instance indicates a disconnect. |
+| `SHUTDOWN_ON_ROBLOX_DISCONNECT` | Sends the shutdown signal with a 15 second timer if the current Roblox instance indicates a disconnect. |
+| `EXIT_ON_ROBLOX_KILL` | Shuts down the program if the current Roblox process ID is killed. |
+| `SHUTDOWN_ON_ROBLOX_KILL` | Sends the shutdown signal with a 15 second timer if the current Roblox process ID is killed. |
 
 </details>
 

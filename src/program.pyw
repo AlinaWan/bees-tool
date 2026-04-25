@@ -22,6 +22,7 @@ from services.file_watcher import FileWatcher
 from services.hotkey_listener import HotkeyListener
 from services.process_monitor import ProcessMonitor
 from services.recache_manager import RecacheManager
+from services.roblox_log_monitor import RobloxLogMonitor
 from ui.menu_overlay import MenuOverlay
 from ui.scan_area_overlay import ScanAreaOverlay
 from ui.tooltip_marker import TooltipMarker
@@ -33,6 +34,7 @@ class Program:
     def __init__(self):
         self.ahk = AHK()
         self.process_monitor = ProcessMonitor()
+        self.log_monitor = RobloxLogMonitor()
         self.system_controller = SystemController()
 
         self.mutex_handle = None
@@ -78,11 +80,21 @@ class Program:
     def exit_logic(self):
         self.should_exit = True
 
-    def _on_roblox_exit(self):
-        if Config.EXIT_ON_ROBLOX_CLOSE:
+    def _on_roblox_disconnect(self):
+        if Config.EXIT_ON_ROBLOX_DISCONNECT:
             self.should_exit = True
 
-        if Config.SHUTDOWN_ON_ROBLOX_CLOSE:
+        if Config.SHUTDOWN_ON_ROBLOX_DISCONNECT:
+            self.system_controller.start_shutdown(
+                15,
+                "Shutting down.\n\nPress Ctrl+Shift+X to abort."
+            )
+
+    def _on_roblox_kill(self):
+        if Config.EXIT_ON_ROBLOX_KILL:
+            self.should_exit = True
+
+        if Config.SHUTDOWN_ON_ROBLOX_KILL:
             self.system_controller.start_shutdown(
                 15,
                 "Shutting down.\n\nPress Ctrl+Shift+X to abort."
@@ -179,9 +191,15 @@ class Program:
 
             self.area_visual = ScanAreaOverlay(self.search_area, self.scale)
 
-            if (Config.EXIT_ON_ROBLOX_CLOSE or Config.SHUTDOWN_ON_ROBLOX_CLOSE):
+            if (Config.EXIT_ON_ROBLOX_DISCONNECT or Config.SHUTDOWN_ON_ROBLOX_DISCONNECT):
+                self.log_monitor.start({
+                    r"\[FLog::Network\] Time to disconnect replication data: ([\d\.]+)":
+                    lambda _: self._on_roblox_disconnect()
+                })
+
+            if (Config.EXIT_ON_ROBLOX_KILL or Config.SHUTDOWN_ON_ROBLOX_KILL):
                 if (pid := ProcessLocator.get_process_pid("RobloxPlayerBeta.exe")):
-                    self.process_monitor.start(pid, on_exit=self._on_roblox_exit)
+                    self.process_monitor.start(pid, on_kill=self._on_roblox_kill)
                 else:
                     NativeMethods.message_box(
                         "Failed to get Roblox process ID for process monitoring.\n\n" +
@@ -437,9 +455,14 @@ class Program:
         marker.root.destroy()
 
     def cleanup(self):
-        FileWatcher.stop_active_watcher()
+        if hasattr(self, "log_monitor") and self.log_monitor:
+            self.log_monitor.stop()
 
-        if self.process_monitor:
+        from core.config_handler import config_watcher
+        if config_watcher:
+            config_watcher.stop()
+
+        if hasattr(self, "process_monitor") and self.process_monitor:
             self.process_monitor.stop()
 
         if self.mutex_handle:

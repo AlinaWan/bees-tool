@@ -60,6 +60,8 @@ class NativeMethods:
     _FILE_SHARE_WRITE: ReadOnly = 0x00000002
     _OPEN_EXISTING: ReadOnly = 3
     _FILE_FLAG_BACKUP_SEMANTICS: ReadOnly = 0x02000000
+    _FILE_NOTIFY_CHANGE_FILE_NAME: ReadOnly = 0x00000001
+    _FILE_NOTIFY_CHANGE_SIZE: ReadOnly = 0x00000008
     _FILE_NOTIFY_CHANGE_LAST_WRITE: ReadOnly = 0x00000010
 
     _TOKEN_ADJUST_PRIVILEGES: ReadOnly = 0x20
@@ -140,6 +142,9 @@ class NativeMethods:
 
     _kernel32.CancelIo.argtypes = [wintypes.HANDLE]
     _kernel32.CancelIo.restype = wintypes.BOOL
+
+    _kernel32.GetOverlappedResult.argtypes = [wintypes.HANDLE, ctypes.POINTER(OVERLAPPED), ctypes.POINTER(wintypes.DWORD), wintypes.BOOL]
+    _kernel32.GetOverlappedResult.restype = wintypes.BOOL
 
     _kernel32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
     _kernel32.CreateFileW.restype = wintypes.HANDLE
@@ -237,6 +242,15 @@ class NativeMethods:
     def cancel_io(handle):
         return NativeMethods._kernel32.CancelIo(handle)
 
+    @staticmethod
+    def get_overlapped_result(handle, overlapped, bytes_returned, wait):
+        return NativeMethods._kernel32.GetOverlappedResult(
+            handle,
+            ctypes.byref(overlapped),
+            bytes_returned,
+            wait
+        )
+
     # UI & window related methods
     @staticmethod
     def message_box(text, title, flags=MB_OK):
@@ -301,6 +315,8 @@ class NativeMethods:
             buffer,
             ctypes.sizeof(buffer),
             False,
+            NativeMethods._FILE_NOTIFY_CHANGE_FILE_NAME | 
+            NativeMethods._FILE_NOTIFY_CHANGE_SIZE | 
             NativeMethods._FILE_NOTIFY_CHANGE_LAST_WRITE,
             None,
             overlapped_ptr,

@@ -12,6 +12,7 @@ from core.constants import Constants
 from services.file_watcher import FileWatcher
 from utils.math_evaluator import MathEvaluator
 
+config_watcher = FileWatcher()
 current_config_path = None
 config_data = None
 recache_manager = None
@@ -50,8 +51,10 @@ class ConfigHandler:
         Config.AUTO_ROUTINE_LMB_TIMEOUT_MS = evaluator.evaluate(r["lmb_timeout_ms"])
 
         b = data["behavior_settings"]
-        Config.EXIT_ON_ROBLOX_CLOSE = evaluator.evaluate(b["exit_on_roblox_close"])
-        Config.SHUTDOWN_ON_ROBLOX_CLOSE = evaluator.evaluate(b["shutdown_on_roblox_close"])
+        Config.EXIT_ON_ROBLOX_DISCONNECT = evaluator.evaluate(b["exit_on_roblox_disconnect"])
+        Config.SHUTDOWN_ON_ROBLOX_DISCONNECT = evaluator.evaluate(b["shutdown_on_roblox_disconnect"])
+        Config.EXIT_ON_ROBLOX_KILL = evaluator.evaluate(b["exit_on_roblox_kill"])
+        Config.SHUTDOWN_ON_ROBLOX_KILL = evaluator.evaluate(b["shutdown_on_roblox_kill"])
 
         if Config.AUTO_ROUTINE_ENABLED:
             Config.AUTO_RELEASE_ENABLED = True
@@ -103,8 +106,10 @@ class ConfigHandler:
                 "lmb_timeout_ms": Config.AUTO_ROUTINE_LMB_TIMEOUT_MS
             },
             "behavior_settings": {
-                "exit_on_roblox_close": Config.EXIT_ON_ROBLOX_CLOSE,
-                "shutdown_on_roblox_close": Config.SHUTDOWN_ON_ROBLOX_CLOSE
+                "exit_on_roblox_disconnect": Config.EXIT_ON_ROBLOX_DISCONNECT,
+                "shutdown_on_roblox_disconnect": Config.SHUTDOWN_ON_ROBLOX_DISCONNECT,
+                "exit_on_roblox_kill": Config.EXIT_ON_ROBLOX_KILL,
+                "shutdown_on_roblox_kill": Config.SHUTDOWN_ON_ROBLOX_KILL
             }
         }
 
@@ -137,19 +142,13 @@ class ConfigHandler:
             return
 
         # this prevents multiple threads from watching different files at once.
-        FileWatcher.stop_active_watcher()
-
-        # load once immediately
+        config_watcher.stop()
+        
         ConfigHandler._reload_from_disk(path)
         current_config_path = path
 
-        # this ensures that if the user edits the NEW file in Notepad, it updates live.
-        FileWatcher._thread = threading.Thread(
-            target=FileWatcher.watch_file_changes,
-            args=(path, ConfigHandler._reload_from_disk),
-            daemon=True
-        )
-        FileWatcher._thread.start()
+        # Start the watcher instance
+        config_watcher.start(path, ConfigHandler._reload_from_disk)
 
     @staticmethod
     def edit_config():
@@ -184,14 +183,8 @@ class ConfigHandler:
         print(f"[ConfigHandler::Edit] Opened {current_config_path} in Notepad.")
 
         # 5. Ensure the watcher is running so edits are applied live
-        if FileWatcher._thread is None or not FileWatcher._thread.is_alive():
-            FileWatcher._cts.clear()
-            FileWatcher._thread = threading.Thread(
-                target=FileWatcher.watch_file_changes,
-                args=(current_config_path, ConfigHandler._reload_from_disk),
-                daemon=True
-            )
-            FileWatcher._thread.start()
+        if config_watcher._thread is None or not config_watcher._thread.is_alive():
+            config_watcher.start(current_config_path, ConfigHandler._reload_from_disk)
 
     @staticmethod
     def open_help():
