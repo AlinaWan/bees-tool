@@ -9,9 +9,12 @@
 By maintaining a rigorous state of *interrogatio visualis*, the framework ensures that interaction occurs only upon the attainment of a defined temporal confidence threshold (*LOCK\_DURATION\_MS*), thereby mitigating the entropy of rapid visual noise. Once a target is validated, the tool executes a precise kinematic sequence: a sub-pixel focus nudge followed by a relative vector drag, calculated *ex post facto* based on the target’s detected orientation.
 
 <div align="center">
+  <video src="https://github.com/user-attachments/assets/a52e705f-8d1c-443f-92c0-28d3d04041c7" width="100%" controls>
+  </video>
   <video src="https://github.com/user-attachments/assets/8bbe6eb9-72fd-4d4d-9d34-9d73fb156ae2" width="100%" controls>
   </video>
 </div>
+
 
 -----
 
