@@ -17,11 +17,15 @@ By maintaining a rigorous state of *interrogatio visualis*, the framework ensure
 
 ## 📦 Requirements
 
-Execution of this binary requires a Python 3.10+ runtime environment equipped with the necessary dependencies:
+Execution of this binary requires a Python 3.10+ runtime environment equipped with the necessary prerequisites:
 
-```bash
-pip install -r requirements.txt
-```
+- Pip dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+- A macroscopic photonic emission system capable of emitting and controlling quanta of the electromagnetic field to generate spatially resolved visible-spectrum electromagnetic radiation.
+- An electromechanical input matrix capable of employing discretized analog-to-digital switching modules to transduce human motor commands into discrete, serialized binary scan-code signals.
 
 -----
 
