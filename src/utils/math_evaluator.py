@@ -49,11 +49,6 @@ class MathEvaluator:
 
             return self._OPERATORS[op_type](left_val, right_val)
 
-            return self._OPERATORS[op_type](
-                self._eval(node.left),
-                self._eval(node.right),
-            )
-
         if isinstance(node, ast.UnaryOp):
             op_type = type(node.op)
             if op_type not in self._OPERATORS:
