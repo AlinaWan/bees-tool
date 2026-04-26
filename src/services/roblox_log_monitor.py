@@ -1,6 +1,9 @@
 import os
 import re
+import threading
+import time
 from typing import final as sealed, Callable, Dict
+
 from services.file_watcher import FileWatcher
 
 @sealed
@@ -11,6 +14,9 @@ class RobloxLogMonitor:
         self._current_log_path = None
         self._last_position = 0
         self._running = False
+        self._poll_thread = None # we cannot reliably count on file_watcher because it only reports a change for these types of logs
+                                 # if the log is (for example) open in notepad.exe and notepad.exe is also focused
+                                 # unfortunately that's just due to how Roblox writes logs and we can't do anything about it
         
         # Maps compiled regex objects to their callback functions
         self._handlers: Dict[re.Pattern, Callable[[re.Match], None]] = {}
@@ -34,12 +40,35 @@ class RobloxLogMonitor:
         # Start the directory watcher
         # The monitor will only wake up when the OS reports a file change
         self._watcher.start(self._log_dir, self._on_dir_change)
+
+        # Start polling
+        self._poll_thread = threading.Thread(target=self._internal_poll, daemon=True)
+        self._poll_thread.start()
+
         print(f"[LogMonitor] Monitoring directory: {self._log_dir}")
 
     def stop(self):
         self._running = False
         self._watcher.stop()
+        # The poll thread will exit on the next loop iteration
         print("[LogMonitor] Stopped.")
+
+    def _internal_poll(self):
+        """
+        Periodically 'touches' the file to force a metadata sync.
+        This triggers the OS FileWatcher to notice the change.
+        (See remark at self._poll_thread initialization)
+        """
+        while self._running:
+            if self._current_log_path and os.path.exists(self._current_log_path):
+                try:
+                    # Just opening and closing with share-ready permissions
+                    # 'nudges' the OS just like Notepad does.
+                    with open(self._current_log_path, "r", encoding="utf-8", errors="ignore") as _:
+                        pass 
+                except Exception:
+                    pass
+            time.sleep(1.0)
 
     def _on_dir_change(self, changed_path):
         if not self._running:
