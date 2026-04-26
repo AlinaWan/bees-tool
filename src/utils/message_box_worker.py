@@ -18,4 +18,4 @@ flags = int(sys.argv[3])
 
 result = NativeMethods.message_box(text, title, flags)
 
-print(result)
+print(result) # simple IPC; print verbatim to stdout
