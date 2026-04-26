@@ -3,7 +3,6 @@ __version__ = "1.0.0"
 __author__ = "Riri"
 __license__ = "MIT"
 
-from ast import Constant
 import atexit
 import threading
 import time
@@ -27,6 +26,7 @@ from ui.menu_overlay import MenuOverlay
 from ui.scan_area_overlay import ScanAreaOverlay
 from ui.tooltip_marker import TooltipMarker
 from utils.process_locator import ProcessLocator
+from utils.safe_message_box import SafeMessageBox
 from utils.system_controller import SystemController
 
 @sealed
@@ -55,6 +55,8 @@ class Program:
         self.routine_state = "idle"
         self.routine_lmb_down_time = 0
 
+        self._hotkey_register_lock = threading.Lock()
+        self._hotkey_registering = False
         self._cache_lock = threading.Lock()
         self.recache_manager = RecacheManager()
         ConfigHandler.set_recache_manager(self.recache_manager)
@@ -122,6 +124,56 @@ class Program:
             rotated_cache.append({'img': rotated, 'angle': angle})
         return rotated_cache
 
+    def _handle_process_monitor_retry(self):
+        def on_result(result):
+            if result == 4:  # Retry
+                if not (Config.EXIT_ON_ROBLOX_KILL or Config.SHUTDOWN_ON_ROBLOX_KILL):
+                    print("[Program::Process] Retry ignored (disabled in config).")
+                    return
+
+                print("[Program::Recache] Retrying process detection...")
+                self._try_start_process_monitor()
+            else:
+                print("[Program::Recache] Monitoring skipped by user.")
+
+        SafeMessageBox.show_message_box_async(
+            "Failed to get Roblox process ID for process monitoring.\n\n"
+            "Please open Roblox and click 'Retry' while the game is running, "
+            "or 'Cancel' to skip process monitoring entirely.",
+            "Process Monitoring Warning",
+            NativeMethods.MB_RETRYCANCEL | NativeMethods.MB_ICONWARNING,
+            on_result
+        )
+
+    def _try_start_process_monitor(self):
+        if not (Config.EXIT_ON_ROBLOX_KILL or Config.SHUTDOWN_ON_ROBLOX_KILL):
+            print("[Program::Process] Monitoring disabled via config.")
+            return
+
+        pid = ProcessLocator.get_process_pid("RobloxPlayerBeta.exe", True)
+
+        if pid:
+            self.process_monitor.start(pid, on_kill=self._on_roblox_kill)
+        else:
+            self._handle_process_monitor_retry()
+
+    def _handle_hotkey_retry(self):
+        def on_result(result):
+            if result == 4:  # Retry
+                print("[Program::Hotkey] Retrying hotkey registration...")
+                self._update_hotkey_registration()
+            else:
+                print("[Program::Hotkey] User skipped hotkey retry.")
+
+        SafeMessageBox.show_message_box_async(
+            "Failed to register one or more hotkeys.\n\n"
+            "This is usually because another program is already using them. "
+            "Please close conflicting apps or change your hotkeys and click 'Retry', or 'Cancel' to continue with missing keys.",
+            "Hotkey Warning",
+            NativeMethods.MB_RETRYCANCEL | NativeMethods.MB_ICONWARNING,
+            on_result
+        )
+
     def _recache(self):
         # rebuild template cache
         with self._cache_lock:
@@ -168,27 +220,7 @@ class Program:
 
             if proc_needed:
                 if not self.process_monitor.is_running:
-            ### WARNING: Commented out to prevent Python runtime fatal error (thread state violation). See DEBT.md in root.
-            # while True:
-                    pid = ProcessLocator.get_process_pid("RobloxPlayerBeta.exe", True)
-                        
-                    if pid:
-                        self.process_monitor.start(pid, on_kill=self._on_roblox_kill)
-                #         break
-
-                #     result = NativeMethods.message_box(
-                #             "Failed to get Roblox process ID for process monitoring.\n\n" +
-                #             "Please open Roblox and click 'Retry' while the game is running, " +
-                #             "or 'Cancel' to skip process monitoring entirely.",
-                #             "Process Monitoring Warning",
-                #             NativeMethods.MB_RETRYCANCEL | NativeMethods.MB_ICONWARNING
-                #         )
-
-                #     if result != 4: 
-                #         print("[Program::Recache] Monitoring skipped by user.")
-                #         break
-                    else: # -
-                        print("[Program::Recache]? Failed to get Roblox process ID. Process monitoring skipped.") # -
+                    self._try_start_process_monitor()
             else:
                 if self.process_monitor.is_running:
                     self.process_monitor.stop()
@@ -198,54 +230,53 @@ class Program:
             print("[Program::Recache] Cache rebuilt")
 
     def _update_hotkey_registration(self):
-        """Checks if hotkey configs changed and restarts listener if necessary."""
-        current_config = {
-            "toggle": (Config.TOGGLE_MOD, Config.TOGGLE_KEY),
-            "exit": (Config.EXIT_MOD, Config.EXIT_KEY),
-            "menu": (Config.MENU_MOD, Config.MENU_KEY),
-            "cancel": (Config.CANCEL_SHUTDOWN_MOD, Config.CANCEL_SHUTDOWN_KEY)
-        }
+        if self._hotkey_registering:
+            print("[Program::Hotkey] Registration already in progress, skipping...")
+            return
 
-        # Check if anything actually changed
-        if current_config != self.last_hotkey_config or self.hotkey_listener is None:
-            print("[Program::Hotkey] Configuration change detected. Re-registering...")
-        
-        ### WARNING: Commented out to prevent Python runtime fatal error (thread state violation). See DEBT.md in root.
-        # while True:
-        # If listener exists, we stop it
-        if self.hotkey_listener and self.hotkey_listener.is_alive():
-            self.hotkey_listener.stop()
-            self.hotkey_listener.join(timeout=0.5)
+        with self._hotkey_register_lock:
+            self._hotkey_registering = True
 
-        self.hotkey_listener = HotkeyListener(
-            self.toggle_logic, 
-            self.exit_logic, 
-            self.menu.toggle,
-            self.cancel_shutdown
-        )
-        self.hotkey_listener.start()
+            try:
+                current_config = {
+                    "toggle": (Config.TOGGLE_MOD, Config.TOGGLE_KEY),
+                    "exit": (Config.EXIT_MOD, Config.EXIT_KEY),
+                    "menu": (Config.MENU_MOD, Config.MENU_KEY),
+                    "cancel": (Config.CANCEL_SHUTDOWN_MOD, Config.CANCEL_SHUTDOWN_KEY)
+                }
 
-        self.hotkey_listener.status_event.wait(timeout=0.5)
+                if current_config == self.last_hotkey_config and self.hotkey_listener is not None:
+                    return
 
-        # if self.hotkey_listener.success:
-        #     break
+                print("[Program::Hotkey] Re-registering hotkeys...")
 
-        # result = NativeMethods.message_box(
-        #     "Failed to register one or more hotkeys.\n\n" +
-        #     "This is usually because another program is already using them. " +
-        #     "Please close conflicting apps and click 'Retry', or 'Cancel' to continue with missing keys.",
-        #     "Hotkey Warning",
-        #     NativeMethods.MB_RETRYCANCEL | NativeMethods.MB_ICONWARNING
-        # )
+                # stop old listener safely
+                if self.hotkey_listener:
+                    self.hotkey_listener.stop()
+                    if self.hotkey_listener.is_alive():
+                        self.hotkey_listener.join(timeout=1.0)
 
-        # # result 4 = Retry, result 2 = Cancel
-        # if result != 4: 
-        #     print("[Program::Hotkey] User skipped hotkey retry.")
-        #     break
-        if not self.hotkey_listener.success: # -
-            print("[Program::Hotkey]? Failed to register one or more hotkeys. Retry skipped.") # -
+                # attempt registration
+                self.hotkey_listener = HotkeyListener(
+                    self.toggle_logic,
+                    self.exit_logic,
+                    self.menu.toggle,
+                    self.cancel_shutdown
+                )
+                self.hotkey_listener.start()
 
-        self.last_hotkey_config = current_config
+                # wait briefly for result
+                self.hotkey_listener.status_event.wait(timeout=1.0)
+
+                if self.hotkey_listener.success:
+                    self.last_hotkey_config = current_config
+                    return
+
+                # failure → async retry (NON-BLOCKING)
+                self._handle_hotkey_retry()
+
+            finally:
+                self._hotkey_registering = False
 
     def run(self):
         marker = TooltipMarker()
@@ -567,41 +598,33 @@ class Program:
             app.run()
         except cv2.error as e:
             if "error: (-215:Assertion failed)" in str(e):
-            ### WARNING: Commented out to prevent Python runtime fatal error (thread state violation). See DEBT.md in root.
-            #     NativeMethods.message_box(
-            #         "OpenCV raised Error -215 (Assertion failed) during runtime.\n\n" +
-            #         "This is usually because DRAG_STEP resulted in a search area " +
-            #         "that is smaller than the template size. Try increasing DRAG_STEP, " + 
-            #         "decreasing DOWNSCALE_FACTOR, or using a smaller template image.",
-            #         "Fatal Error",
-            #         NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
-            #     )
-                print("[Program::Runtime]! Fatal Error:") # -
-
+                NativeMethods.message_box(
+                    "OpenCV raised Error -215 (Assertion failed) during runtime.\n\n" +
+                    "This is usually because DRAG_STEP resulted in a search area " +
+                    "that is smaller than the template size. Try increasing DRAG_STEP, " + 
+                    "decreasing DOWNSCALE_FACTOR, or using a smaller template image.",
+                    "Fatal Error",
+                    NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
+                )
                 raise # raise directly so we get a nicely colored traceback instead of plain text
             else:
-            #     NativeMethods.message_box(
-            #         "An OpenCV error occurred during runtime:\n\n" +
-            #         f"{e}\n\n" +
-            #         "The program will now close.",
-            #         "Fatal Error",
-            #         NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
-            #     )
-                print("[Program::Runtime]! Fatal Error:") # -
-                
+                NativeMethods.message_box(
+                    "An OpenCV error occurred during runtime:\n\n" +
+                    f"{e}\n\n" +
+                    "The program will now close.",
+                    "Fatal Error",
+                    NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
+                )
                 raise
 
         except Exception as e:
-            ### WARNING: Commented out to prevent Python runtime fatal error (thread state violation). See DEBT.md in root.
-            # NativeMethods.message_box(
-            #     "An unexpected error occurred during runtime:\n\n" +
-            #     f"{e}\n\n" +
-            #     "The program will now close.",
-            #     "Fatal Error",
-            #     NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
-            # )
-            print("[Program::Runtime]! Fatal Error:") # -
-
+            NativeMethods.message_box(
+                "An unexpected error occurred during runtime:\n\n" +
+                f"{e}\n\n" +
+                "The program will now close.",
+                "Fatal Error",
+                NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
+            )
             raise
 
 if __name__ == "__main__":

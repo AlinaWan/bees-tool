@@ -41,7 +41,9 @@
     <Compile Include="src\ui\tooltip_marker.py" />
     <Compile Include="src\ui\__init__.py" />
     <Compile Include="src\utils\math_evaluator.py" />
+    <Compile Include="src\utils\message_box_worker.py" />
     <Compile Include="src\utils\process_locator.py" />
+    <Compile Include="src\utils\safe_message_box.py" />
     <Compile Include="src\utils\system_controller.py" />
     <Compile Include="src\utils\__init__.py" />
     <Compile Include="src\__init__.py" />
