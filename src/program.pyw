@@ -144,6 +144,44 @@ class Program:
             if hasattr(self, "area_visual"):
                 self.area_visual.update_dimensions(self.search_area, self.scale)
 
+            log_needed = Config.EXIT_ON_ROBLOX_DISCONNECT or Config.SHUTDOWN_ON_ROBLOX_DISCONNECT
+
+            if log_needed:
+                if not self.log_monitor.is_running:
+                    self.log_monitor.start({
+                        r"\[FLog::Network\] Time to disconnect replication data: ([\d\.]+)":
+                        lambda _: self._on_roblox_disconnect()
+                    })
+            else:
+                if self.log_monitor.is_running:
+                    self.log_monitor.stop()
+
+            proc_needed = Config.EXIT_ON_ROBLOX_KILL or Config.SHUTDOWN_ON_ROBLOX_KILL
+
+            if proc_needed:
+                if not self.process_monitor.is_running:
+                    while True:
+                        pid = ProcessLocator.get_process_pid("RobloxPlayerBeta.exe", True)
+                        
+                        if pid:
+                            self.process_monitor.start(pid, on_kill=self._on_roblox_kill)
+                            break
+
+                        result = NativeMethods.message_box(
+                                "Failed to get Roblox process ID for process monitoring.\n\n" +
+                                "Please open Roblox and click 'Retry' while the game is running, " +
+                                "or click 'Cancel' to skip process monitoring entirely.",
+                                "Warning",
+                                NativeMethods.MB_RETRYCANCEL | NativeMethods.MB_ICONWARNING
+                            )
+
+                        if result != 4: 
+                            print("[Program::Recache] Monitoring skipped by user.")
+                            break
+            else:
+                if self.process_monitor.is_running:
+                    self.process_monitor.stop()
+
             print("[Program::Recache] Cache rebuilt")
 
     def run(self):
@@ -190,25 +228,6 @@ class Program:
             self._recache()
 
             self.area_visual = ScanAreaOverlay(self.search_area, self.scale)
-
-            if (Config.EXIT_ON_ROBLOX_DISCONNECT or Config.SHUTDOWN_ON_ROBLOX_DISCONNECT):
-                self.log_monitor.start({
-                    r"\[FLog::Network\] Time to disconnect replication data: ([\d\.]+)":
-                    lambda _: self._on_roblox_disconnect()
-                })
-
-            if (Config.EXIT_ON_ROBLOX_KILL or Config.SHUTDOWN_ON_ROBLOX_KILL):
-                if (pid := ProcessLocator.get_process_pid("RobloxPlayerBeta.exe")):
-                    self.process_monitor.start(pid, on_kill=self._on_roblox_kill)
-                else:
-                    NativeMethods.message_box(
-                        "Failed to get Roblox process ID for process monitoring.\n\n" +
-                        "This is usually because Roblox was not open during launch. " +
-                        "Try opening Roblox first, then launching the program.",
-                        "Warning",
-                        NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
-                    )
-                    pass
         
             while not self.should_exit:
                 self.recache_manager.flush()

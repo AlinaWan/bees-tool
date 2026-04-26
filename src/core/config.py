@@ -33,11 +33,17 @@ class Config:
     AUTO_ROUTINE_WALK_TIME_MS = 250               # Time to hold each walk key
     AUTO_ROUTINE_LMB_TIMEOUT_MS = 3000            # Time a minigame hasn't appeared to give up this cycle
 
+    # --- Hotkey Preference ---
+    TOGGLE_MOD, TOGGLE_KEY = 0, 117                           # F6 (0, 0x75)
+    EXIT_MOD, EXIT_KEY = 4, 27                                # Shift + Esc (0x0004, 0x1B)
+    MENU_MOD, MENU_KEY = 2, 121                               # Ctrl + F10 (0x0002, 0x79)
+    CANCEL_SHUTDOWN_MOD, CANCEL_SHUTDOWN_KEY = 6, 88          # Ctrl + Shift + X (0x0002 | 0x0004, 0x58)
+
     # --- Behavior Preference ---
-    EXIT_ON_ROBLOX_DISCONNECT = False            # Kill the process if Roblox indicates a disconnect
-    SHUTDOWN_ON_ROBLOX_DISCONNECT = False        # Send the shutdown signal after a countdown if Roblox indicates a disconnect
-    EXIT_ON_ROBLOX_KILL = False                  # Kill the process if the Roblox PID dies
-    SHUTDOWN_ON_ROBLOX_KILL = False              # Send the shutdown signal after a countdown if the Roblox PID dies
+    EXIT_ON_ROBLOX_DISCONNECT = False             # Kill the process if Roblox indicates a disconnect
+    SHUTDOWN_ON_ROBLOX_DISCONNECT = False         # Send the shutdown signal after a countdown if Roblox indicates a disconnect
+    EXIT_ON_ROBLOX_KILL = False                   # Kill the process if the Roblox PID dies
+    SHUTDOWN_ON_ROBLOX_KILL = False               # Send the shutdown signal after a countdown if the Roblox PID dies
 
     # Implicitly force AUTO_RELEASE if AUTO_ROUTINE
     if AUTO_ROUTINE_ENABLED:

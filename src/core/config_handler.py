@@ -1,7 +1,6 @@
 import json
 import os
 import subprocess
-import threading
 import webbrowser
 from datetime import datetime, timezone
 from tkinter import filedialog
@@ -50,6 +49,16 @@ class ConfigHandler:
         Config.AUTO_ROUTINE_WALK_TIME_MS = evaluator.evaluate(r["walk_time_ms"])
         Config.AUTO_ROUTINE_LMB_TIMEOUT_MS = evaluator.evaluate(r["lmb_timeout_ms"])
 
+        h =data["hotkey_settings"]
+        Config.TOGGLE_MOD = evaluator.evaluate(h["toggle"]["mod"])
+        Config.TOGGLE_KEY = evaluator.evaluate(h["toggle"]["key"])
+        Config.EXIT_MOD = evaluator.evaluate(h["exit"]["mod"])
+        Config.EXIT_KEY = evaluator.evaluate(h["exit"]["key"])
+        Config.MENU_MOD = evaluator.evaluate(h["menu"]["mod"])
+        Config.MENU_KEY = evaluator.evaluate(h["menu"]["key"])
+        Config.CANCEL_SHUTDOWN_MOD = evaluator.evaluate(h["cancel_shutdown"]["mod"])
+        Config.CANCEL_SHUTDOWN_KEY = evaluator.evaluate(h["cancel_shutdown"]["key"])
+
         b = data["behavior_settings"]
         Config.EXIT_ON_ROBLOX_DISCONNECT = evaluator.evaluate(b["exit_on_roblox_disconnect"])
         Config.SHUTDOWN_ON_ROBLOX_DISCONNECT = evaluator.evaluate(b["shutdown_on_roblox_disconnect"])
@@ -62,6 +71,18 @@ class ConfigHandler:
     @staticmethod
     def _build_current_config():
         return {
+            "description": [
+                "---------------------- Bees Tool Configuration ----------------------",
+                " Feel free to add your own notes in the 'custom_info' section below! ",
+                "                                                                     ",
+                " You can write values as expressions based on screen dimensions with ",
+                " variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., SCREEN_HEIGHT / 2). ",
+                " Operators: +, -, *, /, //, %, **, +x, -x, &, |, ^, and parenthesis. ",
+                "                                                                     ",
+                " Hotkeys can be written as either hexadecimal or decimal. The        ",
+                " bitwise OR (|) operator is particularly useful for bitmasking.      ",
+                "---------------------------------------------------------------------"
+                ],
             "metadata": {
                 "custom_info": {
                     "author": "",
@@ -72,44 +93,42 @@ class ConfigHandler:
                     "version": "1.0.0",
                     "schema": 1,
                     "created": datetime.now(timezone.utc).isoformat(),
-                    "description": [
-                        "---------------------- Bees Tool Configuration ----------------------",
-                        " Feel free to add your own notes in the 'custom_info' section above! ",
-                        " You can write values as expressions based on screen dimensions with ",
-                        " variables SCREEN_WIDTH and SCREEN_HEIGHT (e.g., SCREEN_HEIGHT / 2). ",
-                        " Supported operators: +, -, *, /, //, %, **, +x, -x and parentheses. ",
-                        "---------------------------------------------------------------------"
-                ]
                 }
             },
             "slider_settings": {
                 "confidence_threshold": Config.CONFIDENCE_THRESHOLD,
-                "rotation_step": Config.ROTATION_STEP,
-                "drag_step": Config.DRAG_STEP,
-                "cooldown_ms": Config.COOLDOWN_MS,
-                "lock_duration_ms": Config.LOCK_DURATION_MS,
-                "downscale_factor": Config.DOWNSCALE_FACTOR,
-                "boundary_margin": Config.BOUNDARY_MARGIN,
-                "minigame_timeout_ms": Config.MINIGAME_TIMEOUT_MS
+                "rotation_step":        Config.ROTATION_STEP,
+                "drag_step":            Config.DRAG_STEP,
+                "cooldown_ms":          Config.COOLDOWN_MS,
+                "lock_duration_ms":     Config.LOCK_DURATION_MS,
+                "downscale_factor":     Config.DOWNSCALE_FACTOR,
+                "boundary_margin":      Config.BOUNDARY_MARGIN,
+                "minigame_timeout_ms":  Config.MINIGAME_TIMEOUT_MS
             },
             "meter_settings": {
-                "auto_release_enabled": Config.AUTO_RELEASE_ENABLED,
-                "auto_release_tolerance": Config.AUTO_RELEASE_TOLERANCE,
+                "auto_release_enabled":    Config.AUTO_RELEASE_ENABLED,
+                "auto_release_tolerance":  Config.AUTO_RELEASE_TOLERANCE,
                 "auto_release_confidence": Config.AUTO_RELEASE_CONFIDENCE,
-                "auto_release_y_offset": Config.AUTO_RELEASE_Y_OFFSET,
-                "search_depth": Config.SEARCH_DEPTH
+                "auto_release_y_offset":   Config.AUTO_RELEASE_Y_OFFSET,
+                "search_depth":            Config.SEARCH_DEPTH
             },
             "routine_settings": {
                 "auto_routine_enabled": Config.AUTO_ROUTINE_ENABLED,
-                "pattern": list(Config.AUTO_ROUTINE_PATTERN),
-                "walk_time_ms": Config.AUTO_ROUTINE_WALK_TIME_MS,
-                "lmb_timeout_ms": Config.AUTO_ROUTINE_LMB_TIMEOUT_MS
+                "pattern":              list(Config.AUTO_ROUTINE_PATTERN),
+                "walk_time_ms":         Config.AUTO_ROUTINE_WALK_TIME_MS,
+                "lmb_timeout_ms":       Config.AUTO_ROUTINE_LMB_TIMEOUT_MS
+            },
+            "hotkey_settings": {
+                "toggle":          { "mod": Config.TOGGLE_MOD, "key": Config.TOGGLE_KEY },
+                "exit":            { "mod": Config.EXIT_MOD, "key": Config.EXIT_KEY },
+                "menu":            { "mod": Config.MENU_MOD, "key": Config.MENU_KEY },
+                "cancel_shutdown": { "mod": Config.CANCEL_SHUTDOWN_MOD, "key": Config.CANCEL_SHUTDOWN_KEY }
             },
             "behavior_settings": {
-                "exit_on_roblox_disconnect": Config.EXIT_ON_ROBLOX_DISCONNECT,
+                "exit_on_roblox_disconnect":     Config.EXIT_ON_ROBLOX_DISCONNECT,
                 "shutdown_on_roblox_disconnect": Config.SHUTDOWN_ON_ROBLOX_DISCONNECT,
-                "exit_on_roblox_kill": Config.EXIT_ON_ROBLOX_KILL,
-                "shutdown_on_roblox_kill": Config.SHUTDOWN_ON_ROBLOX_KILL
+                "exit_on_roblox_kill":           Config.EXIT_ON_ROBLOX_KILL,
+                "shutdown_on_roblox_kill":       Config.SHUTDOWN_ON_ROBLOX_KILL
             }
         }
 

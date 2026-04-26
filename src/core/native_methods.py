@@ -89,14 +89,12 @@ class NativeMethods:
     MB_OKCANCEL: ReadOnly = 0x00000001
     MB_YESNO: ReadOnly = 0x00000004
     MB_YESNOCANCEL: ReadOnly = 0x00000003
+    MB_ABORTRETRYIGNORE: ReadOnly = 0x00000002
+    MB_RETRYCANCEL: ReadOnly = 0x00000005
+    MB_CANCELTRYCONTINUE: ReadOnly = 0x00000006
+    MB_HELP: ReadOnly = 0x00004000
 
     WM_HOTKEY: ReadOnly = 0x0312
-    MOD_SHIFT: ReadOnly = 0x0004
-    MOD_CONTROL: ReadOnly = 0x0002
-    VK_KEY_X: ReadOnly = 0x58
-    VK_F6: ReadOnly = 0x75
-    VK_F10: ReadOnly = 0x79
-    VK_ESCAPE: ReadOnly = 0x1B
 
     _advapi32.InitiateSystemShutdownExW.argtypes = [wintypes.LPWSTR, wintypes.LPWSTR, wintypes.DWORD, wintypes.BOOL, wintypes.BOOL, wintypes.DWORD]
     _advapi32.InitiateSystemShutdownExW.restype = wintypes.BOOL
@@ -160,6 +158,15 @@ class NativeMethods:
 
     _psapi.EnumProcesses.argtypes = [ctypes.POINTER(wintypes.DWORD), wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
     _psapi.EnumProcesses.restype = wintypes.BOOL
+
+    _user32.EnumWindows.argtypes = [ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM), wintypes.LPARAM]
+    _user32.EnumWindows.restype = wintypes.BOOL
+
+    _user32.IsWindowVisible.argtypes = [wintypes.HWND]
+    _user32.IsWindowVisible.restype = wintypes.BOOL
+
+    _user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    _user32.GetWindowThreadProcessId.restype = wintypes.DWORD
 
     _psapi.GetModuleBaseNameW.argtypes = [wintypes.HANDLE, wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
     _psapi.GetModuleBaseNameW.restype = wintypes.DWORD
@@ -338,6 +345,23 @@ class NativeMethods:
             count = bytes_returned.value // ctypes.sizeof(wintypes.DWORD)
             return [pids[i] for i in range(count)]
         return []
+
+    @staticmethod
+    def is_process_visible(pid: int) -> bool:
+        found_visible = [False]
+    
+        def callback(hwnd, lParam):
+            if NativeMethods._user32.IsWindowVisible(hwnd):
+                window_pid = wintypes.DWORD()
+                NativeMethods._user32.GetWindowThreadProcessId(hwnd, ctypes.byref(window_pid))
+                if window_pid.value == pid:
+                    found_visible[0] = True
+                    return False
+            return True
+
+        enum_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        NativeMethods._user32.EnumWindows(enum_proc(callback), 0)
+        return found_visible[0]
 
     @staticmethod
     def get_process_name(pid: int) -> str:

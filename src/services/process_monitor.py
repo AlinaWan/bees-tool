@@ -11,9 +11,14 @@ class ProcessMonitor:
 
     # ---------- Public API ----------
 
+    @property
+    def is_running(self) -> bool:
+        """Returns True if the monitor thread is currently active."""
+        return self._thread is not None and self._thread.is_alive()
+
     def start(self, pid: int, on_kill: Callable[[], None]):
         """Start monitoring a process by PID."""
-        if self._thread and self._thread.is_alive():
+        if self.is_running:
             return
 
         self._stop_event.clear()

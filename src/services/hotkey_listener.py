@@ -1,6 +1,7 @@
 import threading
 from typing import final as sealed
 
+from core.config import Config
 from core.native_methods import NativeMethods
 
 @sealed
@@ -21,10 +22,10 @@ class HotkeyListener(threading.Thread):
         # ID 3: Ctrl + F10 (Menu Toggle)
         # ID 4: Escape (Cancel Shutdown)
         results = [
-            NativeMethods.register_hotkey(None, 1, 0, NativeMethods.VK_F6),
-            NativeMethods.register_hotkey(None, 2, NativeMethods.MOD_SHIFT, NativeMethods.VK_ESCAPE),
-            NativeMethods.register_hotkey(None, 3, NativeMethods.MOD_CONTROL, NativeMethods.VK_F10),
-            NativeMethods.register_hotkey(None, 4, NativeMethods.MOD_CONTROL | NativeMethods.MOD_SHIFT, NativeMethods.VK_KEY_X)
+            NativeMethods.register_hotkey(None, 1, Config.TOGGLE_MOD, Config.TOGGLE_KEY),
+            NativeMethods.register_hotkey(None, 2, Config.EXIT_MOD, Config.EXIT_KEY),
+            NativeMethods.register_hotkey(None, 3, Config.MENU_MOD, Config.MENU_KEY),
+            NativeMethods.register_hotkey(None, 4, Config.CANCEL_SHUTDOWN_MOD, Config.CANCEL_SHUTDOWN_KEY)
         ]
 
         if not all(results):

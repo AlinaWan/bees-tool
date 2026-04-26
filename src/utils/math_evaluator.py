@@ -15,6 +15,9 @@ class MathEvaluator:
         ast.Pow: op.pow,
         ast.UAdd: op.pos,
         ast.USub: op.neg,
+        ast.BitOr: op.or_,
+        ast.BitAnd: op.and_,
+        ast.BitXor: op.xor,
     }
 
     def __init__(self, variables=None):
@@ -34,7 +37,17 @@ class MathEvaluator:
         if isinstance(node, ast.BinOp):
             op_type = type(node.op)
             if op_type not in self._OPERATORS:
-                raise ValueError("Operator not allowed")
+                raise ValueError(f"Operator {op_type.__name__} not allowed")
+
+            left_val = self._eval(node.left)
+            right_val = self._eval(node.right)
+
+            bitwise_ops = (ast.BitOr, ast.BitAnd, ast.BitXor)
+            if op_type in bitwise_ops:
+                if not (isinstance(left_val, int) and isinstance(right_val, int)):
+                    raise ValueError(f"Bitwise {op_type.__name__} requires integer operands")
+
+            return self._OPERATORS[op_type](left_val, right_val)
 
             return self._OPERATORS[op_type](
                 self._eval(node.left),

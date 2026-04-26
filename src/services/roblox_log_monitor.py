@@ -15,7 +15,15 @@ class RobloxLogMonitor:
         # Maps compiled regex objects to their callback functions
         self._handlers: Dict[re.Pattern, Callable[[re.Match], None]] = {}
 
+    @property
+    def is_running(self) -> bool:
+        """Exposes the internal running state to the RecacheManager."""
+        return self._running
+
     def start(self, patterns_and_callbacks: Dict[str, Callable[[re.Match], None]]):
+        if self._running:
+            return
+
         # Compile patterns once on start
         self._handlers = {re.compile(p): c for p, c in patterns_and_callbacks.items()}
         self._running = True
