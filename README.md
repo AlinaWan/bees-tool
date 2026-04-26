@@ -1,5 +1,6 @@
 <div align="center">
 <h1>Bees Tool</h1>
+  <p>The definitive <b>Bees Macro</b> for <b>Roblox</b></p>
 </div>
 
 > *“In motu continuo, certitudo reperta est.”* — Riri, circa 2026
