@@ -1,3 +1,9 @@
+"""
+Safe message box to prevent Python GIL crash. Call SafeMessageBox.show_message_box_async()
+instead of NativeMethods.message_box(). Arguments are the same plus a callback.
+
+Depends on message_box_worker.py in the same directory.
+"""
 import os
 import sys
 import subprocess
