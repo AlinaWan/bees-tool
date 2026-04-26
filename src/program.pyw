@@ -33,9 +33,11 @@ from utils.system_controller import SystemController
 class Program:
     def __init__(self):
         self.ahk = AHK()
+        self.menu = None
         self.process_monitor = ProcessMonitor()
         self.log_monitor = RobloxLogMonitor()
         self.system_controller = SystemController()
+        self.hotkey_listener = None
 
         self.mutex_handle = None
 
@@ -61,6 +63,12 @@ class Program:
         self.last_drag_step = Config.DRAG_STEP
         self.last_rotation_step = Config.ROTATION_STEP
         self.last_downscale = Config.DOWNSCALE_FACTOR
+        self.last_hotkey_config = {
+            "toggle": (Config.TOGGLE_MOD, Config.TOGGLE_KEY),
+            "exit": (Config.EXIT_MOD, Config.EXIT_KEY),
+            "menu": (Config.MENU_MOD, Config.MENU_KEY),
+            "cancel": (Config.CANCEL_SHUTDOWN_MOD, Config.CANCEL_SHUTDOWN_KEY)
+        }
 
         # runtime cache
         self.template_cache = None
@@ -170,8 +178,8 @@ class Program:
                         result = NativeMethods.message_box(
                                 "Failed to get Roblox process ID for process monitoring.\n\n" +
                                 "Please open Roblox and click 'Retry' while the game is running, " +
-                                "or click 'Cancel' to skip process monitoring entirely.",
-                                "Warning",
+                                "or 'Cancel' to skip process monitoring entirely.",
+                                "Process Monitoring Warning",
                                 NativeMethods.MB_RETRYCANCEL | NativeMethods.MB_ICONWARNING
                             )
 
@@ -182,23 +190,60 @@ class Program:
                 if self.process_monitor.is_running:
                     self.process_monitor.stop()
 
+            self._update_hotkey_registration()
+
             print("[Program::Recache] Cache rebuilt")
+
+    def _update_hotkey_registration(self):
+        """Checks if hotkey configs changed and restarts listener if necessary."""
+        current_config = {
+            "toggle": (Config.TOGGLE_MOD, Config.TOGGLE_KEY),
+            "exit": (Config.EXIT_MOD, Config.EXIT_KEY),
+            "menu": (Config.MENU_MOD, Config.MENU_KEY),
+            "cancel": (Config.CANCEL_SHUTDOWN_MOD, Config.CANCEL_SHUTDOWN_KEY)
+        }
+
+        # Check if anything actually changed
+        if current_config != self.last_hotkey_config or self.hotkey_listener is None:
+            print("[Program::Hotkey] Configuration change detected. Re-registering...")
+            
+        while True:
+            # If listener exists, we stop it
+            if self.hotkey_listener and self.hotkey_listener.is_alive():
+                self.hotkey_listener.stop()
+                self.hotkey_listener.join(timeout=0.5)
+
+            self.hotkey_listener = HotkeyListener(
+                self.toggle_logic, 
+                self.exit_logic, 
+                self.menu.toggle,
+                self.cancel_shutdown
+            )
+            self.hotkey_listener.start()
+
+            self.hotkey_listener.status_event.wait(timeout=0.5)
+
+            if self.hotkey_listener.success:
+                break
+
+            result = NativeMethods.message_box(
+                "Failed to register one or more hotkeys.\n\n" +
+                "This is usually because another program is already using them. " +
+                "Please close conflicting apps and click 'Retry', or 'Cancel' to continue with missing keys.",
+                "Hotkey Warning",
+                NativeMethods.MB_RETRYCANCEL | NativeMethods.MB_ICONWARNING
+            )
+
+            # result 4 = Retry, result 2 = Cancel
+            if result != 4: 
+                print("[Program::Hotkey] User skipped hotkey retry.")
+                break
+
+        self.last_hotkey_config = current_config
 
     def run(self):
         marker = TooltipMarker()
-        menu = MenuOverlay(ConfigHandler.load_config, ConfigHandler.edit_config, ConfigHandler.open_help)
-
-        listener = HotkeyListener(self.toggle_logic, self.exit_logic, menu.toggle, self.cancel_shutdown)
-        listener.start()
-        listener.status_event.wait(timeout=0.5)
-        if not listener.success:
-            NativeMethods.message_box(
-                    "Failed to register one or more hotkeys.\n\n" +
-                    "This is usually because another program is already using them. " +
-                    "Try checking if another program is using the same keys.",
-                    "Warning",
-                    NativeMethods.MB_OK | NativeMethods.MB_ICONWARNING
-                )
+        self.menu = MenuOverlay(ConfigHandler.load_config, ConfigHandler.edit_config, ConfigHandler.open_help)
 
         self.raw_template = cv2.imread(Constants.TARGET_PATH, cv2.IMREAD_GRAYSCALE)
         if self.raw_template is None:
@@ -232,8 +277,8 @@ class Program:
             while not self.should_exit:
                 self.recache_manager.flush()
                 self.area_visual.update(self.is_active)
-                if menu.alive:
-                    menu.update()
+                if self.menu.alive:
+                    self.menu.update()
 
                 now = time.perf_counter()
 
@@ -474,6 +519,9 @@ class Program:
         marker.root.destroy()
 
     def cleanup(self):
+        if self.hotkey_listener and self.hotkey_listener.is_alive():
+            self.hotkey_listener.stop()
+
         if hasattr(self, "log_monitor") and self.log_monitor:
             self.log_monitor.stop()
 

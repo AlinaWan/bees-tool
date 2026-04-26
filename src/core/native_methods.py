@@ -94,6 +94,7 @@ class NativeMethods:
     MB_CANCELTRYCONTINUE: ReadOnly = 0x00000006
     MB_HELP: ReadOnly = 0x00004000
 
+    WM_QUIT: ReadOnly = 0x0012
     WM_HOTKEY: ReadOnly = 0x0312
 
     _advapi32.InitiateSystemShutdownExW.argtypes = [wintypes.LPWSTR, wintypes.LPWSTR, wintypes.DWORD, wintypes.BOOL, wintypes.BOOL, wintypes.DWORD]
@@ -176,6 +177,18 @@ class NativeMethods:
 
     _user32.UnregisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int]
     _user32.UnregisterHotKey.restype = wintypes.BOOL
+
+    _user32.PostThreadMessageW.argtypes = [wintypes.DWORD, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    _user32.PostThreadMessageW.restype = wintypes.BOOL
+
+    _user32.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT, wintypes.UINT]
+    _user32.GetMessageW.restype = wintypes.BOOL
+
+    _user32.TranslateMessage.argtypes = [ctypes.POINTER(wintypes.MSG)]
+    _user32.TranslateMessage.restype = wintypes.BOOL
+
+    _user32.DispatchMessageW.argtypes = [ctypes.POINTER(wintypes.MSG)]
+    _user32.DispatchMessageW.restype = wintypes.LPARAM
 
     _user32.GetParent.argtypes = [wintypes.HWND]
     _user32.GetParent.restype = wintypes.HWND
@@ -470,6 +483,10 @@ class NativeMethods:
     @staticmethod
     def dispatch_message(msg):
         NativeMethods._user32.DispatchMessageW(ctypes.byref(msg))
+
+    @staticmethod
+    def post_thread_message(thread_id, msg_type, wparam=0, lparam=0):
+        return NativeMethods._user32.PostThreadMessageW(thread_id, msg_type, wparam, lparam)
 
     # Screen metrics related methods
     @staticmethod
