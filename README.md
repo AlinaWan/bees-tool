@@ -16,6 +16,7 @@ By maintaining a rigorous state of *interrogatio visualis*, the framework ensure
   </video>
 </div>
 
+Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features and is only supported on machines running Windows.
 
 -----
 
