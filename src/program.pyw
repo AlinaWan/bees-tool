@@ -583,7 +583,7 @@ class Program:
 
         mutex, is_first_instance = NativeMethods.create_single_instance_mutex(f"Global\\{Constants.GUID}")
         if not is_first_instance:
-            NativeMethods.message_box(
+            SafeMessageBox.show_message_box_sync(
                 "Another instance of Bees Tool is already running.",
                 "Already Running",
                 NativeMethods.MB_OK | NativeMethods.MB_ICONINFORMATION
@@ -598,17 +598,18 @@ class Program:
             app.run()
         except cv2.error as e:
             if "error: (-215:Assertion failed)" in str(e):
-                NativeMethods.message_box(
+                SafeMessageBox.show_message_box_sync(
                     "OpenCV raised Error -215 (Assertion failed) during runtime.\n\n" +
                     "This is usually because DRAG_STEP resulted in a search area " +
                     "that is smaller than the template size. Try increasing DRAG_STEP, " + 
-                    "decreasing DOWNSCALE_FACTOR, or using a smaller template image.",
+                    "decreasing DOWNSCALE_FACTOR, or using a smaller template image.\n\n" +
+                    "The program will now close.",
                     "Fatal Error",
                     NativeMethods.MB_OK | NativeMethods.MB_ICONERROR
                 )
                 raise # raise directly so we get a nicely colored traceback instead of plain text
             else:
-                NativeMethods.message_box(
+                SafeMessageBox.show_message_box_sync(
                     "An OpenCV error occurred during runtime:\n\n" +
                     f"{e}\n\n" +
                     "The program will now close.",
@@ -618,7 +619,7 @@ class Program:
                 raise
 
         except Exception as e:
-            NativeMethods.message_box(
+            SafeMessageBox.show_message_box_sync(
                 "An unexpected error occurred during runtime:\n\n" +
                 f"{e}\n\n" +
                 "The program will now close.",
