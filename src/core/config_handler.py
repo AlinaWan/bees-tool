@@ -198,8 +198,8 @@ class ConfigHandler:
             print(f"[ConfigHandler::Edit] Created and loaded config: {path}")
 
         # 4. Open the file (either the existing one or the one just created) in Notepad
-        subprocess.Popen(['notepad.exe', current_config_path])
-        print(f"[ConfigHandler::Edit] Opened {current_config_path} in Notepad.")
+        subprocess.Popen([Constants.TEXT_EDITOR_PATH, current_config_path])
+        print(f"[ConfigHandler::Edit] Opened {current_config_path} with {Constants.TEXT_EDITOR_PATH}.")
 
         # 5. Ensure the watcher is running so edits are applied live
         if config_watcher._thread is None or not config_watcher._thread.is_alive():

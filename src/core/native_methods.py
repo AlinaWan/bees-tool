@@ -151,6 +151,9 @@ class NativeMethods:
     _kernel32.ReadDirectoryChangesW.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD, wintypes.BOOL, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(OVERLAPPED), wintypes.LPVOID]
     _kernel32.ReadDirectoryChangesW.restype = wintypes.BOOL
 
+    _kernel32.GetWindowsDirectoryW.argtypes = [wintypes.LPWSTR, wintypes.UINT]
+    _kernel32.GetWindowsDirectoryW.restype = wintypes.UINT
+
     _kernel32.GetCurrentProcess.argtypes = []
     _kernel32.GetCurrentProcess.restype = wintypes.HANDLE
 
@@ -346,6 +349,15 @@ class NativeMethods:
     @staticmethod
     def close_handle(handle):
         NativeMethods._kernel32.CloseHandle(handle)
+
+    @staticmethod
+    def get_windows_directory() -> str:
+        # MAX_PATH is 260
+        buffer = ctypes.create_unicode_buffer(260)
+        size = NativeMethods._kernel32.GetWindowsDirectoryW(buffer, 260)
+        if size == 0:
+            return ""
+        return buffer.value
 
     # Process management related methods
     @staticmethod
