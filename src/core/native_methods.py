@@ -1,5 +1,6 @@
 import ctypes
 from ctypes import wintypes
+from pathlib import Path
 from typing import Final as ReadOnly, final as sealed
 
 if ctypes.sizeof(ctypes.c_void_p) == 8:
@@ -47,6 +48,9 @@ class NativeMethods:
     _psapi: ReadOnly = ctypes.WinDLL("psapi")
     _user32: ReadOnly = ctypes.WinDLL("user32")
 
+    # Local DLLs
+    _scanner_lib: ReadOnly = ctypes.WinDLL(Path(__file__).resolve().parent.parent / "native" / "meter_scanner.dll")
+
     _DWMWA_WINDOW_CORNER_PREFERENCE: ReadOnly = 33
     _DWMWCP_ROUND: ReadOnly = 2
 
@@ -75,6 +79,9 @@ class NativeMethods:
     _FILE_FLAG_OVERLAPPED: ReadOnly = 0x40000000
     _WAIT_OBJECT_0: ReadOnly = 0x00000000
     _INFINITE: ReadOnly = 0xFFFFFFFF
+
+    INT = ctypes.c_int
+    UBYTE = ctypes.c_ubyte
 
     ERROR_ALREADY_EXISTS: ReadOnly = 183
 
@@ -205,6 +212,18 @@ class NativeMethods:
     _user32.SetProcessDpiAwarenessContext.argtypes = [ctypes.c_void_p]
     _user32.SetProcessDpiAwarenessContext.restype = wintypes.BOOL
 
+    # Local argtypes/restype
+    _scanner_lib.check_pixel_columns.argtypes = [
+        ctypes.POINTER(ctypes.c_ubyte), # pixels
+        ctypes.c_int,                   # height
+        ctypes.c_int,                   # stride
+        ctypes.POINTER(ctypes.c_int),   # x_offsets
+        ctypes.POINTER(ctypes.c_ubyte), # target_bgrs
+        ctypes.c_int,                   # count
+        ctypes.c_int                    # tolerance
+    ]
+    _scanner_lib.check_pixel_columns.restype = ctypes.c_int
+
     # Memory management related methods
     @staticmethod
     def create_buffer(size=1024):
@@ -213,6 +232,18 @@ class NativeMethods:
     @staticmethod
     def byref(obj):
         return ctypes.byref(obj)
+
+    @staticmethod
+    def cast_to_ubyte_ptr(obj):
+        return (ctypes.c_ubyte * len(obj)).from_buffer(obj) # take a raw python buffer
+
+    @staticmethod
+    def create_int_array(values):
+        return (ctypes.c_int * len(values))(*values)
+
+    @staticmethod
+    def create_ubyte_array(values):
+        return (ctypes.c_ubyte * len(values))(*values)
 
     # Mutex related methods
     @staticmethod
@@ -512,3 +543,16 @@ class NativeMethods:
     @staticmethod
     def get_screen_height():
         return NativeMethods.get_system_metrics(1)
+
+    # Local methods
+    @staticmethod
+    def pixel_scan(pixel_ptr, height, stride, x_offsets_ptr, target_bgrs_ptr, count, tolerance):
+        return NativeMethods._scanner_lib.check_pixel_columns(
+            pixel_ptr,
+            height,
+            stride,
+            x_offsets_ptr,
+            target_bgrs_ptr,
+            count,
+            tolerance
+        )

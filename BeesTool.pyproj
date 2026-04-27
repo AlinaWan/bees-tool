@@ -20,6 +20,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
+    <Content Include="src\native\meter_scanner.c" />
     <Content Include="src\resources\meter.png" />
     <Content Include="src\resources\target.png" />
   </ItemGroup>
@@ -51,6 +52,7 @@
   <ItemGroup>
     <Folder Include="src" />
     <Folder Include="src\core" />
+    <Folder Include="src\native\" />
     <Folder Include="src\resources" />
     <Folder Include="src\services" />
     <Folder Include="src\ui" />

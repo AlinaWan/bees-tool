@@ -3,6 +3,16 @@
   <p>The definitive <b>Bees Macro</b> for <b>Roblox</b></p>
 </div>
 
+<div align="center">
+
+[![License](https://img.shields.io/github/license/AlinaWan/bees-tool)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](#)
+[![C](https://img.shields.io/badge/C-00599C?logo=c&logoColor=white)](#)
+[![Visual Studio](https://custom-icon-badges.demolab.com/badge/Visual%20Studio-5C2D91.svg?&logo=visualstudio&logoColor=white)](#)
+[![❤︎](https://img.shields.io/badge/Made%20with%20%E2%9D%A4%20by%20Riri-FFCAE9)](#)
+
+</div>
+
 > *“In motu continuo, certitudo reperta est.”* — Riri, circa 2026
 
 **Bees Tool** is a high-frequency, computer-vision-driven stabilization and execution utility architected for the [Bees](https://www.roblox.com/games/92528179587394) environment. It leverages a multi-stage template matching pipeline—optimized via downscaled bitmap interrogation and rotational caching—to achieve persistent locking on target entities.
@@ -20,21 +30,36 @@ Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features a
 
 -----
 
-## 📦 Requirements
+## 📥 Installation
 
-Execution of this binary requires a Python 3.10+ runtime environment equipped with the necessary prerequisites:
+### 📦 Prerequites
 
 - Pip dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-
+- MSVC via Visual Studio 2022 or Visual Studio 2026
 - A macroscopic photonic emission system capable of emitting and controlling quanta of the electromagnetic field to generate spatially resolved visible-spectrum electromagnetic radiation.
-- An electromechanical input matrix capable of employing discretized analog-to-digital switching modules to transduce human motor commands into discrete, serialized binary scan-code signals.
+
+### 💻 Setup
+
+1.  Compile the C DLL(s):
+    ```cmd
+    cl /LD src\native\meter_scanner.c /Fe:src\native\meter_scanner.dll
+    ```
+> [!IMPORTANT]
+> You must compile the DLL for the same architecture as your Python interpreter. To check your version, run:  
+>
+> `python -c "import platform; print(platform.architecture()[0])"`
+
+2.  Initialize the script via terminal:
+    ```powershell
+    python src\program.pyw
+    ```
 
 -----
 
-## 🛠️ Configuration & Setup
+## 🛠️ Configuration
 
 Adjust the constants within the configuration file to align with your hardware's performance profile:
 
@@ -95,13 +120,6 @@ Adjust the constants within the configuration file to align with your hardware's
 
 </details>
 
-### Installation
-
-1.  Ensure `target.png` (the visual signature of your entity) is present in the resources directory.
-2.  Initialize the script via terminal:
-    ```bash
-    python program.pyw
-    ```
 
 -----
 

@@ -358,6 +358,20 @@ class Program:
                             self.meter_scan_plan = scan_plan
                             self.meter_calibrated = True
 
+                            check_region = {
+                                "top": self.meter_target_y,
+                                "left": min(x for x, _ in self.meter_scan_plan),
+                                "width": (max(x for x, _ in self.meter_scan_plan) - min(x for x, _ in self.meter_scan_plan)) + 1,
+                                "height": Config.SEARCH_DEPTH
+                            }
+
+                            # Pre-prepare ctypes arrays for the C function to avoid overhead in the main loop
+                            self.c_x_offsets = NativeMethods.create_int_array([x_glob - check_region["left"] for x_glob, _ in scan_plan])
+                            bgr_list = []
+                            for _, (b, g, r) in scan_plan:
+                                bgr_list.extend([b, g, r])
+                            self.c_target_bgrs = NativeMethods.create_ubyte_array(bgr_list)
+
                 # Auto Release Check
                 time_since_last_slider = (now - self.last_slider_time) * 1000
 
@@ -367,54 +381,21 @@ class Program:
                     and time_since_last_slider > Config.MINIGAME_TIMEOUT_MS
                 ):
 
-                    check_region = {
-                        "top": self.meter_target_y,
-                        "left": min(x for x, _ in self.meter_scan_plan),
-                        "width": (max(x for x, _ in self.meter_scan_plan) - min(x for x, _ in self.meter_scan_plan)) + 1,
-                        "height": Config.SEARCH_DEPTH
-                    }
-
                     roi = sct.grab(check_region)
 
-                    buf = roi.raw
-                    width = roi.width
-                    height = roi.height
-                    stride = width * 4
-
-                    matches_found = 0
-
-                    tol = Config.AUTO_RELEASE_TOLERANCE
-                    buf_local = buf
-
-                    scan_plan = self.meter_scan_plan
-                    if not scan_plan:
+                    if not self.meter_scan_plan:
                         continue
 
-                    for x_global, (tb, tg, tr) in scan_plan:
-
-                        x = x_global - check_region["left"]
-                        if x < 0 or x >= width:
-                            continue
-
-                        found = False
-
-                        for y in range(height):
-                            offset = y * stride + x * 4
-
-                            b = buf_local[offset]
-                            g = buf_local[offset + 1]
-                            r = buf_local[offset + 2]
-
-                            if (
-                                -tol <= (b - tb) <= tol and
-                                -tol <= (g - tg) <= tol and
-                                -tol <= (r - tr) <= tol
-                            ):
-                                found = True
-                                break
-
-                        if found:
-                            matches_found += 1
+                    # Delegate the heavy lifting to C
+                    matches_found = NativeMethods.pixel_scan(
+                        NativeMethods.cast_to_ubyte_ptr(roi.raw),
+                        roi.height,
+                        roi.width * 4, # stride
+                        self.c_x_offsets,
+                        self.c_target_bgrs,
+                        4,
+                        Config.AUTO_RELEASE_TOLERANCE
+                    )
 
                     if matches_found == 4 and self.is_active:
                         self.ahk.click(button='left', direction='up')
