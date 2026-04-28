@@ -290,6 +290,8 @@ class Program:
         if meter_template is None:
             raise Exception(f"Can't open/read file: {Constants.METER_IMAGE_PATH}\n\nCheck file path/integrity.")
         else:
+            h, w = meter_template.shape[:2]
+            meter_template = meter_template[:, :w // 2]
             meter_template_gray = cv2.cvtColor(meter_template, cv2.COLOR_BGR2GRAY)
 
         self.ahk.run_script("CoordMode, Mouse, Screen")
@@ -321,14 +323,15 @@ class Program:
 
                 # Auto Release Calibration
                 if Config.AUTO_RELEASE_ENABLED and not self.meter_calibrated and meter_template_gray is not None:
-                    right_half = {
+                    # The third vertical slice of the screen (from 50% to 75% width) is our ROI
+                    third_quarter = {
                         "top": 0,
-                        "left": Constants.SCREEN_WIDTH//2,
-                        "width": Constants.SCREEN_WIDTH//2,
+                        "left": (Constants.SCREEN_WIDTH * 2) // 4,  # Starts at 50%
+                        "width": Constants.SCREEN_WIDTH // 4,       # Spans 25%
                         "height": Constants.SCREEN_HEIGHT
                     }
 
-                    frame = np.array(sct.grab(right_half))
+                    frame = np.array(sct.grab(third_quarter))
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
 
                     res = cv2.matchTemplate(gray, meter_template_gray, cv2.TM_CCOEFF_NORMED)
@@ -346,7 +349,7 @@ class Program:
                                 px = start_x + i
                                 py = top_y
 
-                                screen_x = right_half["left"] + px
+                                screen_x = third_quarter["left"] + px
                                 b, g, r = meter_template[py - max_loc[1], px - max_loc[0]][:3]
 
                                 scan_plan.append((

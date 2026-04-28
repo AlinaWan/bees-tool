@@ -211,6 +211,8 @@ All adjustable parameters can be stored in a human-readable `.json` file. This a
 ## ⚠️ Notes & Warnings
 
   * **Template Fidelity**: Templates based on a 1920x1080 resolution are provided as a baseline, but users may need to capture custom templates if their display configuration differs significantly. Although manual pixel coordinate entry is not required, the tool's performance is highly dependent on the quality of the template matches.
+     * **`target.png`**: The inner part of the hexagon slider. Encompass the entire white arrow and do not include the background. This one doesn't need to be pixel-perfect.
+     * **`meter.png`**: The entire completely filled green meter including the dark-green outline. You may need to take the screenshot into Adobe Photoshop or Photopea to finely crop the meter.
 
 -----
 
