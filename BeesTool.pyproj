@@ -20,7 +20,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
-    <Content Include="src\native\meter_scanner.c" />
+    <Content Include="src\native\core_vision.c" />
     <Content Include="src\resources\meter.png" />
     <Content Include="src\resources\target.png" />
   </ItemGroup>
@@ -38,6 +38,7 @@
     <Compile Include="src\services\roblox_log_monitor.py" />
     <Compile Include="src\services\__init__.py" />
     <Compile Include="src\ui\menu_overlay.py" />
+    <Compile Include="src\ui\release_bars_overlay.py" />
     <Compile Include="src\ui\scan_area_overlay.py" />
     <Compile Include="src\ui\tooltip_marker.py" />
     <Compile Include="src\ui\__init__.py" />

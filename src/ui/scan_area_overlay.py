@@ -14,6 +14,10 @@ class ScanAreaOverlay:
         x = int(area['left'] / scale)
         y = int(area['top'] / scale)
 
+        self.scale = scale
+        self.offset_x = x
+        self.offset_y = y
+
         self.root.geometry(f"{w}x{h}+{x}+{y}")
 
         self.canvas = tk.Canvas(self.root, width=w, height=h, bg="black", highlightthickness=0)
@@ -29,11 +33,6 @@ class ScanAreaOverlay:
             size = 2
             dot = self.canvas.create_rectangle(px-size, py-size, px+size, py+size, fill="red", outline="")
             self.dots.append(dot)
-
-        # --- AUTO RELEASE VISUAL ---
-        self.release_left_bar = None
-        self.release_right_bar = None
-        # ------------------------
 
     def update(self, active):
         color = "green" if active else "red"
@@ -60,23 +59,3 @@ class ScanAreaOverlay:
         for i, (px, py) in enumerate(self.points):
             size = 2
             self.canvas.coords(self.dots[i], px-size, py-size, px+size, py+size)
-
-    # --- AUTO RELEASE VISUAL ---
-    def draw_release_bars(self, x, y):
-        if self.release_left_bar:
-            self.canvas.delete(self.release_left_bar)
-            self.canvas.delete(self.release_right_bar)
-        size = 10
-        gap = 10
-
-        self.release_left_bar = self.canvas.create_rectangle(
-            x-gap-size, y-1,
-            x-gap, y+1,
-            fill="yellow", outline=""
-        )
-
-        self.release_right_bar = self.canvas.create_rectangle(
-            x+gap, y-1,
-            x+gap+size, y+1,
-            fill="yellow", outline=""
-        )

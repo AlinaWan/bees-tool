@@ -23,6 +23,7 @@ from services.process_monitor import ProcessMonitor
 from services.recache_manager import RecacheManager
 from services.roblox_log_monitor import RobloxLogMonitor
 from ui.menu_overlay import MenuOverlay
+from ui.release_bars_overlay import ReleaseBarsOverlay
 from ui.scan_area_overlay import ScanAreaOverlay
 from ui.tooltip_marker import TooltipMarker
 from utils.process_locator import ProcessLocator
@@ -286,13 +287,14 @@ class Program:
         if self.raw_template is None:
             raise Exception(f"Can't open/read file: {Constants.TARGET_PATH}\n\nCheck file path/integrity.")
 
-        meter_template = cv2.imread(Constants.METER_IMAGE_PATH)
-        if meter_template is None:
+        full_meter_template = cv2.imread(Constants.METER_IMAGE_PATH)
+        if full_meter_template is None:
             raise Exception(f"Can't open/read file: {Constants.METER_IMAGE_PATH}\n\nCheck file path/integrity.")
         else:
-            h, w = meter_template.shape[:2]
-            meter_template = meter_template[:, :w // 2]
-            meter_template_gray = cv2.cvtColor(meter_template, cv2.COLOR_BGR2GRAY)
+            # search for only half of the template for performance
+            full_h, full_w = full_meter_template.shape[:2]
+            search_template = full_meter_template[:, :full_w // 2]
+            search_template_gray = cv2.cvtColor(search_template, cv2.COLOR_BGR2GRAY)
 
         self.ahk.run_script("CoordMode, Mouse, Screen")
     
@@ -312,17 +314,19 @@ class Program:
             self._recache()
 
             self.area_visual = ScanAreaOverlay(self.search_area, self.scale)
+            self.release_bars_overlay = ReleaseBarsOverlay(self.full_w, self.full_h)
         
             while not self.should_exit:
                 self.recache_manager.flush()
                 self.area_visual.update(self.is_active)
+                self.release_bars_overlay.update()
                 if self.menu.alive:
                     self.menu.update()
 
                 now = time.perf_counter()
 
                 # Auto Release Calibration
-                if Config.AUTO_RELEASE_ENABLED and not self.meter_calibrated and meter_template_gray is not None:
+                if Config.AUTO_RELEASE_ENABLED and not self.meter_calibrated and search_template_gray is not None:
                     # The third vertical slice of the screen (from 50% to 75% width) is our ROI
                     third_quarter = {
                         "top": 0,
@@ -334,46 +338,48 @@ class Program:
                     frame = np.array(sct.grab(third_quarter))
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY)
 
-                    res = cv2.matchTemplate(gray, meter_template_gray, cv2.TM_CCOEFF_NORMED)
+                    res = cv2.matchTemplate(gray, search_template_gray, cv2.TM_CCOEFF_NORMED)
                     _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
                     if max_val >= Config.AUTO_RELEASE_CONFIDENCE:
-                            h, w = meter_template_gray.shape
-                            top_y = max_loc[1] + Config.AUTO_RELEASE_Y_OFFSET
-                            center_x = max_loc[0] + w//2
-                            start_x = center_x - 2
-                
-                            scan_plan = [] # (x_offset, color_bgr)
+                        # max_loc is the (x, y) of the HALF image top-left corner on screen
+                        match_x, match_y = max_loc
+                        top_y = match_y + Config.AUTO_RELEASE_Y_OFFSET
+    
+                        # take x=0 (far left) and x=full_w-1 (far right)
+                        # relative to the detected template location
+                        pixel_indices = [0, full_w - 1]
+    
+                        scan_plan = [] # (x_offset, color_bgr)
                         
-                            for i in range(4):
-                                px = start_x + i
-                                py = top_y
+                        for dx in pixel_indices:
+                            # screen_x is match_x + the offset from the full template's left edge
+                            screen_x = third_quarter["left"] + match_x + dx
 
-                                screen_x = third_quarter["left"] + px
-                                b, g, r = meter_template[py - max_loc[1], px - max_loc[0]][:3]
+                            b, g, r = full_meter_template[top_y - match_y, dx][:3]
 
-                                scan_plan.append((
-                                    screen_x,
-                                    (int(b), int(g), int(r))
-                                ))
-                            
-                            self.meter_target_y = top_y 
-                            self.meter_scan_plan = scan_plan
-                            self.meter_calibrated = True
+                            scan_plan.append((
+                                screen_x,
+                                (int(b), int(g), int(r))
+                            ))
+    
+                        self.meter_target_y = top_y 
+                        self.meter_scan_plan = scan_plan
+                        self.meter_calibrated = True
 
-                            check_region = {
-                                "top": self.meter_target_y,
-                                "left": min(x for x, _ in self.meter_scan_plan),
-                                "width": (max(x for x, _ in self.meter_scan_plan) - min(x for x, _ in self.meter_scan_plan)) + 1,
-                                "height": Config.SEARCH_DEPTH
-                            }
+                        check_region = {
+                            "top": self.meter_target_y,
+                            "left": scan_plan[0][0],
+                            "width": full_w,
+                            "height": Config.SEARCH_DEPTH
+                        }
 
-                            # Pre-prepare ctypes arrays for the C function to avoid overhead in the main loop
-                            self.c_x_offsets = NativeMethods.create_int_array([x_glob - check_region["left"] for x_glob, _ in scan_plan])
-                            bgr_list = []
-                            for _, (b, g, r) in scan_plan:
-                                bgr_list.extend([b, g, r])
-                            self.c_target_bgrs = NativeMethods.create_ubyte_array(bgr_list)
+                        # Pre-prepare ctypes arrays for the C function to avoid overhead in the main loop
+                        self.c_x_offsets = NativeMethods.create_int_array([x_glob - check_region["left"] for x_glob, _ in scan_plan])
+                        bgr_list = []
+                        for _, (b, g, r) in scan_plan:
+                            bgr_list.extend([b, g, r])
+                        self.c_target_bgrs = NativeMethods.create_ubyte_array(bgr_list)
 
                 # Auto Release Check
                 time_since_last_slider = (now - self.last_slider_time) * 1000
@@ -396,16 +402,27 @@ class Program:
                         roi.width * 4, # stride
                         self.c_x_offsets,
                         self.c_target_bgrs,
-                        4,
+                        2,
                         Config.AUTO_RELEASE_TOLERANCE
                     )
 
-                    if matches_found == 4 and self.is_active:
+                    if matches_found == 2 and self.is_active:
                         self.ahk.click(button='left', direction='up')
                         time.sleep(0.05)
 
                     # UI debug overlay
-                    cx = self.meter_scan_plan[0][0]
+                    if self.meter_scan_plan and len(self.meter_scan_plan) >= 2:
+                        left_x = self.meter_scan_plan[0][0]
+                        right_x = self.meter_scan_plan[1][0]
+    
+                        # adding +1 to the right_x before averaging handles the width correctly for alignment
+                        # it's the little things in life :)
+                        cx = int((left_x + right_x + 1) / 2)
+                    else:
+                        cx = self.meter_scan_plan[0][0]
+
+                    cy = self.meter_target_y
+
                     cy = self.meter_target_y
 
                     local_x = cx - self.search_left
@@ -417,7 +434,7 @@ class Program:
                         0 <= vis_x <= self.area_visual.canvas.winfo_width()
                         and 0 <= vis_y <= self.area_visual.canvas.winfo_height()
                     ):
-                        self.area_visual.draw_release_bars(vis_x, vis_y)
+                        self.release_bars_overlay.draw_release_bars(cx, cy)
 
                 # Auto Routine
                 if Config.AUTO_ROUTINE_ENABLED and self.is_active:
