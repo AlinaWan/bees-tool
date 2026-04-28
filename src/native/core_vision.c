@@ -1,5 +1,5 @@
 // x64 Native Tools Command Prompt for VS 2022 (MSVC):
-//     cl /LD meter_scanner.c /Fe:meter_scanner.dll
+//     cl /LD core_vision.c /Fe:core_vision.dll
 // Depended by core\native_methods.py
 
 #include <windows.h>

@@ -45,7 +45,7 @@ Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features a
 
 1.  Compile the C DLL(s):
     ```cmd
-    cl /LD src\native\meter_scanner.c /Fe:src\native\meter_scanner.dll
+    cl /LD src\native\core_vision.c /Fe:src\native\core_vision.dll
     ```
 > [!IMPORTANT]
 > You must compile the DLL for the same architecture as your Python interpreter. To check your version, run:  

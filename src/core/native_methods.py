@@ -49,7 +49,7 @@ class NativeMethods:
     _user32: ReadOnly = ctypes.WinDLL("user32")
 
     # Local DLLs
-    _scanner_lib: ReadOnly = ctypes.WinDLL(Path(__file__).resolve().parent.parent / "native" / "meter_scanner.dll")
+    _vision_lib: ReadOnly = ctypes.WinDLL(Path(__file__).resolve().parent.parent / "native" / "core_vision.dll")
 
     _DWMWA_WINDOW_CORNER_PREFERENCE: ReadOnly = 33
     _DWMWCP_ROUND: ReadOnly = 2
@@ -213,7 +213,7 @@ class NativeMethods:
     _user32.SetProcessDpiAwarenessContext.restype = wintypes.BOOL
 
     # Local argtypes/restype
-    _scanner_lib.check_pixel_columns.argtypes = [
+    _vision_lib.check_pixel_columns.argtypes = [
         ctypes.POINTER(ctypes.c_ubyte), # pixels
         ctypes.c_int,                   # height
         ctypes.c_int,                   # stride
@@ -222,7 +222,7 @@ class NativeMethods:
         ctypes.c_int,                   # count
         ctypes.c_int                    # tolerance
     ]
-    _scanner_lib.check_pixel_columns.restype = ctypes.c_int
+    _vision_lib.check_pixel_columns.restype = ctypes.c_int
 
     # Memory management related methods
     @staticmethod
@@ -547,7 +547,7 @@ class NativeMethods:
     # Local methods
     @staticmethod
     def pixel_scan(pixel_ptr, height, stride, x_offsets_ptr, target_bgrs_ptr, count, tolerance):
-        return NativeMethods._scanner_lib.check_pixel_columns(
+        return NativeMethods._vision_lib.check_pixel_columns(
             pixel_ptr,
             height,
             stride,
