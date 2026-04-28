@@ -34,16 +34,18 @@ Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features a
 
 ### 📦 Prerequites
 
-- Pip dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- Windows 10 or 11
+- Python 3.10 or higher
 - MSVC via Visual Studio 2022 or Visual Studio 2026
-- A macroscopic photonic emission system capable of emitting and controlling quanta of the electromagnetic field to generate spatially resolved visible-spectrum electromagnetic radiation.
 
 ### 💻 Setup
 
-1.  Compile the C DLL(s):
+1. Install **Python dependencies** and **AutoHotKey binary** via Pip:
+   ```powershell
+   pip install -r requirements.txt; if ($?) { pip install ahk[binary] }
+   ```
+
+2.  Compile the **C DLL(s)** via x64/x86 Native Tools Command Prompt for VS:
     ```cmd
     cl /LD src\native\core_vision.c /Fe:src\native\core_vision.dll
     ```
@@ -52,7 +54,7 @@ Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features a
 >
 > `python -c "import platform; print(platform.architecture()[0])"`
 
-2.  Initialize the script via terminal:
+3.  Initialize the script via terminal:
     ```powershell
     python src\program.pyw
     ```
