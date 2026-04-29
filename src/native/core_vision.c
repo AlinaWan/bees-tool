@@ -21,6 +21,10 @@ __declspec(dllexport) int __stdcall check_pixel_columns(
     for (int i = 0; i < count; i++) {
         int target_x = x_offsets[i];
 
+        if (target_x < 0 || target_x >= (stride / 4)) {
+            continue;
+        }
+
         // Target BGR values for this specific column
         int tb = target_bgrs[i * 3];
         int tg = target_bgrs[i * 3 + 1];
