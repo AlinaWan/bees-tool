@@ -17,16 +17,15 @@
 
 **Bees Tool** is a high-frequency, computer-vision-driven stabilization and execution utility architected for the [Bees](https://www.roblox.com/games/92528179587394) environment. It leverages a multi-stage template matching pipeline—optimized via downscaled bitmap interrogation and rotational caching—to achieve persistent locking on target entities.
 
-By maintaining a rigorous state of *interrogatio visualis*, the framework ensures that interaction occurs only upon the attainment of a defined temporal confidence threshold (*LOCK\_DURATION\_MS*), thereby mitigating the entropy of rapid visual noise. Once a target is validated, the tool executes a precise kinematic sequence: a sub-pixel focus nudge followed by a relative vector drag, calculated *ex post facto* based on the target’s detected orientation.
+Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features and is only supported on machines running Windows.
 
 <div align="center">
   <video src="https://github.com/user-attachments/assets/a52e705f-8d1c-443f-92c0-28d3d04041c7" width="100%" controls>
   </video>
-  <video src="https://github.com/user-attachments/assets/8bbe6eb9-72fd-4d4d-9d34-9d73fb156ae2" width="100%" controls>
-  </video>
+  <!-- <video src="https://github.com/user-attachments/assets/8bbe6eb9-72fd-4d4d-9d34-9d73fb156ae2" width="100%" controls>
+  </video> -->
+  <img src="assets/webhook_example.png" alt="Description of image" width="400">
 </div>
-
-Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features and is only supported on machines running Windows.
 
 -----
 
