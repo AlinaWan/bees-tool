@@ -3,6 +3,9 @@ __version__ = "1.0.0"
 __author__ = "Riri"
 __license__ = "MIT"
 
+import faulthandler
+faulthandler.enable()
+
 import asyncio
 import atexit
 import threading
@@ -478,22 +481,22 @@ class Program:
                             # Detect Rarity and Parse Text
                             rarity = OCRParser.detect_rarity_by_color(ocr_img) # take rarity before converting to grayscale
 
-                            gray = cv2.cvtColor(ocr_img, cv2.COLOR_BGR2GRAY)
-                            _, thresh_img = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) # thres from strict b&w. otsu is best for text
-
-                            ocr_engine = WindowsOCR()
-                            raw_text = asyncio.run(ocr_engine.get_text_from_bytes(cv2.imencode('.png', thresh_img)[1].tobytes()))
-        
-                            bee_name, bee_weight = OCRParser.parse_bee_text(raw_text)
-
-                            print(f"[Program::OCR] Raw OCR: {raw_text}")
-                            print(f"[Program::OCR] ├─ Parsed OCR: {bee_name, bee_weight}")
-                            print(f"[Program::OCR] └─ Detected Rarity: {rarity}")
-
-                            # Check Config for Alert Permissions
                             should_alert = Config.DISCORD_WEBHOOK_RARITY_ALERTS.get(rarity.lower(), False)
 
+                            # save compute by only moving to OCR if we care about this rarity
                             if should_alert:
+                                gray = cv2.cvtColor(ocr_img, cv2.COLOR_BGR2GRAY)
+                                _, thresh_img = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) # thres from strict b&w. otsu is best for text
+
+                                ocr_engine = WindowsOCR()
+                                raw_text = asyncio.run(ocr_engine.get_text_from_bytes(cv2.imencode('.png', thresh_img)[1].tobytes()))
+        
+                                bee_name, bee_weight = OCRParser.parse_bee_text(raw_text)
+
+                                print(f"[Program::OCR] Raw OCR: {raw_text}")
+                                print(f"[Program::OCR] ├─ Parsed OCR: {bee_name, bee_weight}")
+                                print(f"[Program::OCR] └─ Detected Rarity: {rarity}")
+
                                 full_win_sct = sct.grab({"left": win_x, "top": win_y, "width": win_w, "height": win_h})
                                 full_bytes = cv2.imencode('.png', np.array(full_win_sct))[1].tobytes()
             

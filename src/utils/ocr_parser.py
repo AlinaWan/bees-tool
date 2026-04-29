@@ -20,7 +20,7 @@ class OCRParser:
                 pixel = img[y, x]
 
                 diff = np.abs(pixel - target)
-                if np.sum(diff) <= tolerance:
+                if diff[0] + diff[1] + diff[2] <= tolerance:
                     run += 1
                     if run >= strip:
                         return True
