@@ -40,6 +40,49 @@ class TOKEN_PRIVILEGES(ctypes.Structure):
     ]
 
 @sealed
+class KEYBDINPUT(ctypes.Structure):
+    _fields_ = [
+        ("wVk", wintypes.WORD),
+        ("wScan", wintypes.WORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+@sealed
+class MOUSEINPUT(ctypes.Structure):
+    _fields_ = [
+        ("dx", wintypes.LONG),
+        ("dy", wintypes.LONG),
+        ("mouseData", wintypes.DWORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+@sealed
+class HARDWAREINPUT(ctypes.Structure):
+    _fields_ = [
+        ("uMsg", wintypes.DWORD),
+        ("wParamL", wintypes.WORD),
+        ("wParamH", wintypes.WORD),
+    ]
+
+class INPUT_UNION(ctypes.Union):
+    _fields_ = [
+        ("ki", KEYBDINPUT),
+        ("mi", MOUSEINPUT),
+        ("hi", HARDWAREINPUT),
+    ]
+
+@sealed
+class INPUT(ctypes.Structure):
+    _fields_ = [
+        ("type", wintypes.DWORD),
+        ("un", INPUT_UNION),
+    ]
+
+@sealed
 class NativeMethods:
 
     _advapi32: ReadOnly = ctypes.WinDLL("advapi32")
@@ -67,6 +110,21 @@ class NativeMethods:
     _FILE_NOTIFY_CHANGE_FILE_NAME: ReadOnly = 0x00000001
     _FILE_NOTIFY_CHANGE_SIZE: ReadOnly = 0x00000008
     _FILE_NOTIFY_CHANGE_LAST_WRITE: ReadOnly = 0x00000010
+
+    _MOUSEEVENTF_MOVE: ReadOnly = 0x0001
+    _MOUSEEVENTF_ABSOLUTE: ReadOnly = 0x8000
+
+    _MOUSEEVENTF_LEFTDOWN: ReadOnly = 0x0002
+    _MOUSEEVENTF_LEFTUP: ReadOnly = 0x0004
+    _MOUSEEVENTF_RIGHTDOWN: ReadOnly = 0x0008
+    _MOUSEEVENTF_RIGHTUP: ReadOnly = 0x0010
+    _MOUSEEVENTF_MIDDLEDOWN: ReadOnly = 0x0020
+    _MOUSEEVENTF_MIDDLEUP: ReadOnly = 0x0040
+    _INPUT_MOUSE: ReadOnly = 0
+
+    _KEYEVENTF_SCANCODE: ReadOnly = 0x0008
+    _KEYEVENTF_KEYUP: ReadOnly = 0x0002
+    _INPUT_KEYBOARD: ReadOnly = 1
 
     _TOKEN_ADJUST_PRIVILEGES: ReadOnly = 0x20
     _TOKEN_QUERY: ReadOnly = 0x8
@@ -178,6 +236,12 @@ class NativeMethods:
 
     _user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
     _user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+
+    _user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
+    _user32.MapVirtualKeyW.restype = wintypes.UINT
+
+    _user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
+    _user32.SendInput.restype = wintypes.UINT
 
     _psapi.GetModuleBaseNameW.argtypes = [wintypes.HANDLE, wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
     _psapi.GetModuleBaseNameW.restype = wintypes.DWORD
@@ -560,6 +624,60 @@ class NativeMethods:
     @staticmethod
     def get_screen_height():
         return NativeMethods.get_system_metrics(1)
+
+    # Input related methods
+    @staticmethod
+    def move_mouse(x: int, y: int, relative: bool = False):
+        inp = INPUT()
+        inp.type = NativeMethods._INPUT_MOUSE
+    
+        if relative:
+            inp.un.mi = MOUSEINPUT(x, y, 0, NativeMethods._MOUSEEVENTF_MOVE, 0, 0)
+        else:
+            w = NativeMethods._user32.GetSystemMetrics(0) # SM_CXSCREEN
+            h = NativeMethods._user32.GetSystemMetrics(1) # SM_CYSCREEN
+        
+            # (Coord * 65536) / Width
+            nx = int((x * 65536) / w)
+            ny = int((y * 65536) / h)
+        
+            flags = NativeMethods._MOUSEEVENTF_MOVE | NativeMethods._MOUSEEVENTF_ABSOLUTE
+            inp.un.mi = MOUSEINPUT(nx, ny, 0, flags, 0, 0)
+
+        NativeMethods._user32.SendInput(1, ctypes.pointer(inp), ctypes.sizeof(INPUT))
+
+    @staticmethod
+    def send_mouse_click(button: str, down: bool):
+        flags = 0
+        if button == 'left':
+            flags = NativeMethods._MOUSEEVENTF_LEFTDOWN if down else NativeMethods._MOUSEEVENTF_LEFTUP
+        elif button == 'right':
+            flags = NativeMethods._MOUSEEVENTF_RIGHTDOWN if down else NativeMethods._MOUSEEVENTF_RIGHTUP
+        elif button == 'middle':
+            flags = NativeMethods._MOUSEEVENTF_MIDDLEDOWN if down else NativeMethods._MOUSEEVENTF_MIDDLEUP
+
+        inp = INPUT()
+        inp.type = NativeMethods._INPUT_MOUSE
+        # dx, dy are 0 because we are clicking at the current cursor position
+        inp.un.mi = MOUSEINPUT(0, 0, 0, flags, 0, 0)
+    
+        NativeMethods._user32.SendInput(1, ctypes.pointer(inp), ctypes.sizeof(INPUT))
+
+    @staticmethod
+    def send_key(vk_code: int, down: bool):
+        # Convert Virtual Key to Hardware Scan Code
+        scan_code = NativeMethods._user32.MapVirtualKeyW(vk_code, 0)
+    
+        flags = NativeMethods._KEYEVENTF_SCANCODE
+        if not down:
+            flags |= NativeMethods._KEYEVENTF_KEYUP
+        
+        inp = INPUT()
+        inp.type = NativeMethods._INPUT_KEYBOARD
+        # We set wVk to 0 when using SCANCODE flag for game compatibility
+        inp.un.ki = KEYBDINPUT(0, scan_code, flags, 0, 0)
+    
+        NativeMethods._user32.SendInput(1, ctypes.pointer(inp), ctypes.sizeof(INPUT))
 
     # Local methods
     @staticmethod

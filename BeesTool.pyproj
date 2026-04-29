@@ -25,7 +25,6 @@
     <Content Include="src\resources\target.png" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\core\auto_routine.py" />
     <Compile Include="src\program.pyw" />
     <Compile Include="src\core\config.py" />
     <Compile Include="src\core\config_handler.py" />

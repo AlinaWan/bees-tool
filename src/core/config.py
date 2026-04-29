@@ -25,10 +25,10 @@ class Config:
     # --- Auto Routine ---
     AUTO_ROUTINE_ENABLED = False                   # Enable the subroutine module (forces Auto Release)
     AUTO_ROUTINE_PATTERN = (                      # Walk pattern
-        ['w','w','w',
-         'd','d','d',
-         's','s','s',
-         'a','a','a']
+        [87, 87, 87,
+         68, 68, 68,
+         83, 83, 83,
+         65, 65, 65]
     )
     AUTO_ROUTINE_WALK_TIME_MS = 250               # Time to hold each walk key
     AUTO_ROUTINE_LMB_TIMEOUT_MS = 3000            # Time a minigame hasn't appeared to give up this cycle

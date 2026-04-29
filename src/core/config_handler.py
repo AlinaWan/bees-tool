@@ -45,7 +45,9 @@ class ConfigHandler:
 
         r = data["routine_settings"]
         Config.AUTO_ROUTINE_ENABLED = evaluator.evaluate(r["auto_routine_enabled"])
-        Config.AUTO_ROUTINE_PATTERN = tuple(r["pattern"])
+        Config.AUTO_ROUTINE_PATTERN = tuple(
+            evaluator.evaluate(x) for x in r["pattern"]
+        )
         Config.AUTO_ROUTINE_WALK_TIME_MS = evaluator.evaluate(r["walk_time_ms"])
         Config.AUTO_ROUTINE_LMB_TIMEOUT_MS = evaluator.evaluate(r["lmb_timeout_ms"])
 

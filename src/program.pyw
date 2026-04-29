@@ -17,7 +17,6 @@ import numpy as np # type: ignore
 from ahk import AHK # type: ignore
 from mss import mss # type: ignore
 
-from core.auto_routine import AutoRoutineThread
 from core.config import Config
 from core.config_handler import ConfigHandler
 from core.constants import Constants
@@ -330,9 +329,6 @@ class Program:
 
             self._recache()
 
-            self.auto_routine_thread = AutoRoutineThread(self)
-            self.auto_routine_thread.start()
-
             self.area_visual = ScanAreaOverlay(self.search_area, self.scale)
             self.release_bars_overlay = ReleaseBarsOverlay(self.full_w, self.full_h)
         
@@ -447,6 +443,34 @@ class Program:
                     cy = self.meter_target_y
 
                     self.release_bars_overlay.draw_release_bars(cx, cy)
+
+                # Auto Routine
+                if Config.AUTO_ROUTINE_ENABLED and self.is_active:
+
+                    not_in_minigame = time_since_last_slider > Config.MINIGAME_TIMEOUT_MS
+
+                    if self.routine_state == "idle" and not_in_minigame:
+
+                        key = Config.AUTO_ROUTINE_PATTERN[self.routine_index]
+                        NativeMethods.send_key(key, True)
+                        time.sleep(Config.AUTO_ROUTINE_WALK_TIME_MS / 1000)
+                        NativeMethods.send_key(key, False)
+
+                        self.routine_index = (self.routine_index + 1) % len(Config.AUTO_ROUTINE_PATTERN)
+
+                        self.ahk.click(button='left', direction='down')
+                        self.routine_lmb_down_time = now
+
+                        self.routine_state = "holding"
+
+                    elif self.routine_state == "holding":
+
+                        if not not_in_minigame:
+                            self.routine_state = "idle"
+
+                        elif (now - self.routine_lmb_down_time) * 1000 > Config.AUTO_ROUTINE_LMB_TIMEOUT_MS:
+                            self.ahk.click(button='left', direction='up')
+                            self.routine_state = "idle"
 
                 if self.webhook_manager.enabled:
                     # This timer is separate from MINIGAME_TIMEOUT_MS as the delay is different and known
