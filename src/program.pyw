@@ -14,6 +14,7 @@ import numpy as np # type: ignore
 from ahk import AHK # type: ignore
 from mss import mss # type: ignore
 
+from core.auto_routine import AutoRoutineThread
 from core.config import Config
 from core.config_handler import ConfigHandler
 from core.constants import Constants
@@ -49,6 +50,7 @@ class Program:
 
         self.mutex_handle = None
 
+        self.auto_routine_thread = None
         self.last_slider_seen_time = 0
         self.ocr_triggered = False
 
@@ -328,6 +330,9 @@ class Program:
 
             self._recache()
 
+            self.auto_routine_thread = AutoRoutineThread(self)
+            self.auto_routine_thread.start()
+
             self.area_visual = ScanAreaOverlay(self.search_area, self.scale)
             self.release_bars_overlay = ReleaseBarsOverlay(self.full_w, self.full_h)
         
@@ -506,34 +511,6 @@ class Program:
                                     f"🐝 **{self.bees_caught}** bees caught!"
                                 )
 
-                # Auto Routine
-                if Config.AUTO_ROUTINE_ENABLED and self.is_active:
-
-                    not_in_minigame = time_since_last_slider > Config.MINIGAME_TIMEOUT_MS
-
-                    if self.routine_state == "idle" and not_in_minigame:
-
-                        key = Config.AUTO_ROUTINE_PATTERN[self.routine_index]
-                        self.ahk.key_down(key)
-                        time.sleep(Config.AUTO_ROUTINE_WALK_TIME_MS / 1000)
-                        self.ahk.key_up(key)
-
-                        self.routine_index = (self.routine_index + 1) % len(Config.AUTO_ROUTINE_PATTERN)
-
-                        self.ahk.click(button='left', direction='down')
-                        self.routine_lmb_down_time = now
-
-                        self.routine_state = "holding"
-
-                    elif self.routine_state == "holding":
-
-                        if not not_in_minigame:
-                            self.routine_state = "idle"
-
-                        elif (now - self.routine_lmb_down_time) * 1000 > Config.AUTO_ROUTINE_LMB_TIMEOUT_MS:
-                            self.ahk.click(button='left', direction='up')
-                            self.routine_state = "idle"
-
                 if not self.is_active:
                     marker.hide()
                     target_start_time = None
@@ -638,6 +615,9 @@ class Program:
         from core.config_handler import config_watcher
         if config_watcher:
             config_watcher.stop()
+
+        if hasattr(self, "auto_routine_thread") and self.auto_routine_thread:
+            self.auto_routine_thread.stop()
 
         if hasattr(self, "process_monitor") and self.process_monitor:
             self.process_monitor.stop()

@@ -25,6 +25,7 @@
     <Content Include="src\resources\target.png" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\core\auto_routine.py" />
     <Compile Include="src\program.pyw" />
     <Compile Include="src\core\config.py" />
     <Compile Include="src\core\config_handler.py" />
@@ -36,7 +37,7 @@
     <Compile Include="src\services\process_monitor.py" />
     <Compile Include="src\services\recache_manager.py" />
     <Compile Include="src\services\roblox_log_monitor.py" />
-	<Compile Include="src\services\webhook_manager.py"/>
+    <Compile Include="src\services\webhook_manager.py" />
     <Compile Include="src\services\__init__.py" />
     <Compile Include="src\ui\menu_overlay.py" />
     <Compile Include="src\ui\release_bars_overlay.py" />
@@ -45,8 +46,8 @@
     <Compile Include="src\ui\__init__.py" />
     <Compile Include="src\utils\math_evaluator.py" />
     <Compile Include="src\utils\message_box_worker.py" />
-	<Compile Include="src\utils\ocr_engine.py"/>
-    <Compile Include="src\utils\ocr_parser.py"/>
+    <Compile Include="src\utils\ocr_engine.py" />
+    <Compile Include="src\utils\ocr_parser.py" />
     <Compile Include="src\utils\process_locator.py" />
     <Compile Include="src\utils\safe_message_box.py" />
     <Compile Include="src\utils\system_controller.py" />
