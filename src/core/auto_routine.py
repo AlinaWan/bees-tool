@@ -1,8 +1,10 @@
 import threading
 import time
+from typing import final as sealed
 
 from core.config import Config
 
+@sealed
 class AutoRoutineThread(threading.Thread):
     def __init__(self, program):
         super().__init__(daemon=True)

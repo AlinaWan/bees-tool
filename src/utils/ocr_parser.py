@@ -33,39 +33,51 @@ class OCRParser:
         clean = text.replace("\n", " ").strip()
 
         # --- Normalize OCR noise ---
-        clean = re.sub(r"\.\.+", ".", clean)                 # 37..16 -> 37.16
-        clean = re.sub(r"(\d)\s+(\d)", r"\1\2", clean)       # 37. 16 -> 37.16
-
-        clean = re.sub(r"(?<=\d)\s*[:;,]\s*(?=\d)", ".", clean) # handles: 81:7kg, 81;7kg, 81,7kg
+        clean = re.sub(r"\.\.+", ".", clean)
+        clean = re.sub(r"(\d)\s+(\d)", r"\1\2", clean)
+        clean = re.sub(r"(?<=\d)\s*[:;,]\s*(?=\d)", ".", clean)
 
         # --- Fix OCR unit corruption ---
-        clean = re.sub(r"\bkq\b", "kg", clean, flags=re.IGNORECASE) # explicitly fix kq
+        clean = re.sub(r"\bkq\b", "kg", clean, flags=re.IGNORECASE)
         clean = re.sub(r"\bk g\b", "kg", clean, flags=re.IGNORECASE)
 
-        # --- Bee detection context ---
+        # --- Bee detection & Name extraction (Same as before) ---
         has_bee_word = "bee" in clean.lower()
-
-        # --- Bee name extraction ---
         name_match = re.search(r"([A-Za-z]+(?:\s?[A-Za-z]+)*\s?Bee)", clean)
 
         if name_match:
             raw_name = name_match.group(1)
-
-            # If OCR attached "Bee" but it's not actually a confirmed word contextually, strip it
-            if not has_bee_word:
-                bee_name = re.sub(r"\s*Bee$", "", raw_name, flags=re.IGNORECASE)
-            else:
-                bee_name = raw_name
+            bee_name = raw_name if has_bee_word else re.sub(r"\s*Bee$", "", raw_name, flags=re.IGNORECASE)
         else:
-            # fallback: try grabbing first word cluster before weight
             fallback_match = re.search(r"^([A-Za-z]+(?:\s[A-Za-z]+)*)", clean)
             bee_name = fallback_match.group(1) if fallback_match else "unknown Bee"
-
+        
         bee_name = bee_name.title().strip()
 
-        # --- Weight extraction ---
-        weight_match = re.search(r"(\d+(?:\.\d+)?\s*[kKmM][gG])", clean)
-        bee_weight = weight_match.group(1).lower() if weight_match else "unknown"
+        # --- Enhanced Weight Extraction ---
+        # 1. Broad search: Look for numbers OR look-alike characters (S, I, l, O, Q) 
+        # followed by the unit (kg/mg)
+        weight_match = re.search(r"([0-9SlIOQ]+(?:\.[0-9SlIOQ]+)?\s*[kKmM][gG])", clean)
+        
+        if weight_match:
+            raw_weight = weight_match.group(1).lower()
+            
+            # 2. Map look-alikes to numbers
+            mapping = {
+                's': '5',
+                'i': '1',
+                'l': '1',
+                'o': '0',
+                'q': '0'
+            }
+            
+            # Apply mapping only to the numbers part
+            for char, replacement in mapping.items():
+                raw_weight = raw_weight.replace(char, replacement)
+            
+            bee_weight = raw_weight
+        else:
+            bee_weight = "unknown"
 
         return bee_name, bee_weight
 

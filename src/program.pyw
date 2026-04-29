@@ -479,9 +479,13 @@ class Program:
                             ocr_img = np.array(ocr_sct)[:, :, :3]
         
                             # Detect Rarity and Parse Text
-                            rarity = OCRParser.detect_rarity_by_color(ocr_img)
+                            rarity = OCRParser.detect_rarity_by_color(ocr_img) # take rarity before converting to grayscale
+
+                            gray = cv2.cvtColor(ocr_img, cv2.COLOR_BGR2GRAY)
+                            _, thresh_img = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) # thres from strict b&w. otsu is best for text
+
                             ocr_engine = WindowsOCR()
-                            raw_text = asyncio.run(ocr_engine.get_text_from_bytes(cv2.imencode('.png', ocr_img)[1].tobytes()))
+                            raw_text = asyncio.run(ocr_engine.get_text_from_bytes(cv2.imencode('.png', thresh_img)[1].tobytes()))
         
                             bee_name, bee_weight = OCRParser.parse_bee_text(raw_text)
 
