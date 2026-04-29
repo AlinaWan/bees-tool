@@ -38,10 +38,10 @@ class OCRParser:
         clean = re.sub(r"(?<=\d)\s*[:;,]\s*(?=\d)", ".", clean)
 
         # --- Fix OCR unit corruption ---
-        clean = re.sub(r"\bkq\b", "kg", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\bkq\b", "kg", clean, flags=re.IGNORECASE) # fix kq -> kg
         clean = re.sub(r"\bk g\b", "kg", clean, flags=re.IGNORECASE)
 
-        # --- Bee detection & Name extraction (Same as before) ---
+        # --- Bee detection & Name extraction ---
         has_bee_word = "bee" in clean.lower()
         name_match = re.search(r"([A-Za-z]+(?:\s?[A-Za-z]+)*\s?Bee)", clean)
 

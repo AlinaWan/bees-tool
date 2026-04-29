@@ -242,9 +242,6 @@ class Program:
 
             self.webhook_manager.update_config()
 
-            print(Config.DISCORD_WEBHOOK_ENABLED)
-            print(Config.DISCORD_WEBHOOK_URL)
-
             print("[Program::Recache] Cache rebuilt")
 
     def _update_hotkey_registration(self):
