@@ -459,7 +459,7 @@ class Program:
                         self.bees_caught += 1
                         self.ocr_triggered = True
 
-                        print(f"[Program::Webhook] Bees Caught: {self.bees_caught}")
+                        # print(f"[Program::Webhook] Bees Caught: {self.bees_caught}")
 
                         hwnd = NativeMethods.find_window(None, "Roblox")
                         if hwnd:

@@ -42,7 +42,15 @@ class OCRParser:
         clean = re.sub(r"\bk g\b", "kg", clean, flags=re.IGNORECASE)
 
         # --- Bee detection & Name extraction ---
-        has_bee_word = "bee" in clean.lower()
+        has_bee_word = bool(re.search(r"\bBee\b", clean, re.IGNORECASE))
+        ends_with_stuck_bee = re.search(r"[A-Za-z]+Bee\b", clean)
+
+        if ends_with_stuck_bee and not has_bee_word: # Fix missing space before 'Bee'
+            clean = re.sub(r"([A-Za-z]+)Bee\b", r"\1 Bee", clean)
+
+        # recompute after modification
+        has_bee_word = re.search(r"\bBee\b", clean, re.IGNORECASE)
+
         name_match = re.search(r"([A-Za-z]+(?:\s?[A-Za-z]+)*\s?Bee)", clean)
 
         if name_match:
