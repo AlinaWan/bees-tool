@@ -38,7 +38,7 @@ class OCRParser:
         clean = re.sub(r"(?<=\d)\s*[:;,]\s*(?=\d)", ".", clean)
 
         # --- Fix OCR unit corruption ---
-        clean = re.sub(r"\bkq\b", "kg", clean, flags=re.IGNORECASE) # fix kq -> kg
+        clean = re.sub(r"kq\b", "kg", clean, flags=re.IGNORECASE) # fix kq -> kg
         clean = re.sub(r"\bk g\b", "kg", clean, flags=re.IGNORECASE)
 
         # --- Bee detection & Name extraction ---
