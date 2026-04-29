@@ -60,6 +60,13 @@ class ConfigHandler:
         Config.CANCEL_SHUTDOWN_KEY = evaluator.evaluate(h["cancel_shutdown"]["key"])
 
         b = data["behavior_settings"]
+        Config.DISCORD_WEBHOOK_ENABLED = evaluator.evaluate(b["discord_webhook_enabled"])
+        Config.DISCORD_WEBHOOK_URL = b["discord_webhook_url"]
+        Config.DISCORD_WEBHOOK_INTERVAL = evaluator.evaluate(b["discord_webhook_interval"])
+        Config.DISCORD_WEBHOOK_RARITY_ALERTS = {
+            k.lower(): bool(v)
+            for k, v in b.get("discord_webhook_rarity_alerts", {}).items()
+        }
         Config.EXIT_ON_ROBLOX_DISCONNECT = evaluator.evaluate(b["exit_on_roblox_disconnect"])
         Config.SHUTDOWN_ON_ROBLOX_DISCONNECT = evaluator.evaluate(b["shutdown_on_roblox_disconnect"])
         Config.EXIT_ON_ROBLOX_KILL = evaluator.evaluate(b["exit_on_roblox_kill"])
@@ -125,6 +132,10 @@ class ConfigHandler:
                 "cancel_shutdown": { "mod": Config.CANCEL_SHUTDOWN_MOD, "key": Config.CANCEL_SHUTDOWN_KEY }
             },
             "behavior_settings": {
+                "discord_webhook_enabled":       Config.DISCORD_WEBHOOK_ENABLED,
+                "discord_webhook_url":           Config.DISCORD_WEBHOOK_URL,
+                "discord_webhook_interval":      Config.DISCORD_WEBHOOK_INTERVAL,
+                "discord_webhook_rarity_alerts": Config.DISCORD_WEBHOOK_RARITY_ALERTS,
                 "exit_on_roblox_disconnect":     Config.EXIT_ON_ROBLOX_DISCONNECT,
                 "shutdown_on_roblox_disconnect": Config.SHUTDOWN_ON_ROBLOX_DISCONNECT,
                 "exit_on_roblox_kill":           Config.EXIT_ON_ROBLOX_KILL,

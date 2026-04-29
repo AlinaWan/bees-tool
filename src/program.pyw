@@ -3,6 +3,7 @@ __version__ = "1.0.0"
 __author__ = "Riri"
 __license__ = "MIT"
 
+import asyncio
 import atexit
 import threading
 import time
@@ -22,10 +23,13 @@ from services.hotkey_listener import HotkeyListener
 from services.process_monitor import ProcessMonitor
 from services.recache_manager import RecacheManager
 from services.roblox_log_monitor import RobloxLogMonitor
+from services.webhook_manager import WebhookManager
 from ui.menu_overlay import MenuOverlay
 from ui.release_bars_overlay import ReleaseBarsOverlay
 from ui.scan_area_overlay import ScanAreaOverlay
 from ui.tooltip_marker import TooltipMarker
+from utils.ocr_engine import WindowsOCR
+from utils.ocr_parser import OCRParser
 from utils.process_locator import ProcessLocator
 from utils.safe_message_box import SafeMessageBox
 from utils.system_controller import SystemController
@@ -35,12 +39,18 @@ class Program:
     def __init__(self):
         self.ahk = AHK()
         self.menu = None
+        self.webhook_manager = WebhookManager()
+        self.bees_caught = 0
+        self.was_in_minigame = False
         self.process_monitor = ProcessMonitor()
         self.log_monitor = RobloxLogMonitor()
         self.system_controller = SystemController()
         self.hotkey_listener = None
 
         self.mutex_handle = None
+
+        self.last_slider_seen_time = 0
+        self.ocr_triggered = False
 
         self.is_active = False
         self.should_exit = False
@@ -228,6 +238,11 @@ class Program:
 
             self._update_hotkey_registration()
 
+            self.webhook_manager.update_config()
+
+            print(Config.DISCORD_WEBHOOK_ENABLED)
+            print(Config.DISCORD_WEBHOOK_URL)
+
             print("[Program::Recache] Cache rebuilt")
 
     def _update_hotkey_registration(self):
@@ -324,6 +339,7 @@ class Program:
                     self.menu.update()
 
                 now = time.perf_counter()
+                time_since_last_slider = (now - self.last_slider_time) * 1000
 
                 # Auto Release Calibration
                 if Config.AUTO_RELEASE_ENABLED and not self.meter_calibrated and search_template_gray is not None:
@@ -365,6 +381,9 @@ class Program:
     
                         self.meter_target_y = top_y 
                         self.meter_scan_plan = scan_plan
+                        self.ocr_triggered = False
+                        self.was_in_minigame = False
+                        self.last_slider_time = now
                         self.meter_calibrated = True
 
                         check_region = {
@@ -389,7 +408,7 @@ class Program:
                     and self.meter_calibrated
                     and time_since_last_slider > Config.MINIGAME_TIMEOUT_MS
                 ):
-
+                    
                     roi = sct.grab(check_region)
 
                     if not self.meter_scan_plan:
@@ -416,25 +435,76 @@ class Program:
                         right_x = self.meter_scan_plan[1][0]
     
                         # adding +1 to the right_x before averaging handles the width correctly for alignment
-                        # it's the little things in life :)
                         cx = int((left_x + right_x + 1) / 2)
                     else:
                         cx = self.meter_scan_plan[0][0]
 
                     cy = self.meter_target_y
 
-                    cy = self.meter_target_y
+                    self.release_bars_overlay.draw_release_bars(cx, cy)
 
-                    local_x = cx - self.search_left
-                    local_y = cy - self.search_top
-                    vis_x = int(local_x / self.scale)
-                    vis_y = int(local_y / self.scale)
-
+                if self.webhook_manager.enabled:
+                    # This timer is separate from MINIGAME_TIMEOUT_MS as the delay is different and known
                     if (
-                        0 <= vis_x <= self.area_visual.canvas.winfo_width()
-                        and 0 <= vis_y <= self.area_visual.canvas.winfo_height()
+                        self.is_active
+                        and self.was_in_minigame
+                        and time_since_last_slider >= 2800
+                        and not self.ocr_triggered
                     ):
-                        self.release_bars_overlay.draw_release_bars(cx, cy)
+                        self.bees_caught += 1
+                        self.ocr_triggered = True
+
+                        print(f"[Program::Webhook] Bees Caught: {self.bees_caught}")
+
+                        hwnd = NativeMethods.find_window(None, "Roblox")
+                        if hwnd:
+                            rect = NativeMethods.get_window_rect(hwnd)
+                            win_x, win_y, win_right, win_bottom = rect
+                            win_w, win_h = win_right - win_x, win_bottom - win_y
+
+                            # take DRAG_STEP wide verticle slice in the screen middle, then take the top half
+                            ocr_roi = {
+                                "left": win_x + (win_w // 2) - (Config.DRAG_STEP // 2),
+                                "top": win_y + (win_h // 10), # Offset slightly from very top
+                                "width": Config.DRAG_STEP,
+                                "height": win_h // 3
+                            }
+
+                            ocr_sct = sct.grab(ocr_roi)
+                            ocr_img = np.array(ocr_sct)[:, :, :3]
+        
+                            # Detect Rarity and Parse Text
+                            rarity = OCRParser.detect_rarity_by_color(ocr_img)
+                            ocr_engine = WindowsOCR()
+                            raw_text = asyncio.run(ocr_engine.get_text_from_bytes(cv2.imencode('.png', ocr_img)[1].tobytes()))
+        
+                            bee_name, bee_weight = OCRParser.parse_bee_text(raw_text)
+
+                            print(f"[Program::OCR] Raw OCR: {raw_text}")
+                            print(f"[Program::OCR] ├─ Parsed OCR: {bee_name, bee_weight}")
+                            print(f"[Program::OCR] └─ Detected Rarity: {rarity}")
+
+                            # Check Config for Alert Permissions
+                            should_alert = Config.DISCORD_WEBHOOK_RARITY_ALERTS.get(rarity.lower(), False)
+
+                            if should_alert:
+                                full_win_sct = sct.grab({"left": win_x, "top": win_y, "width": win_w, "height": win_h})
+                                full_bytes = cv2.imencode('.png', np.array(full_win_sct))[1].tobytes()
+            
+                                # Send formatted structure for chosen rarities
+                                self.webhook_manager.send_alert(
+                                    message=f"**{bee_name}**",
+                                    count=self.bees_caught,
+                                    image_bytes=full_bytes,
+                                    rarity=rarity,
+                                    weight=bee_weight
+                                )
+        
+                            if self.bees_caught % self.webhook_manager.interval == 0:
+                                # General interval status
+                                self.webhook_manager.send_status(
+                                    f"🐝 **{self.bees_caught}** bees caught!"
+                                )
 
                 # Auto Routine
                 if Config.AUTO_ROUTINE_ENABLED and self.is_active:
@@ -499,6 +569,8 @@ class Program:
 
                 if best_val > Config.CONFIDENCE_THRESHOLD:
                     self.last_slider_time = now
+                    self.was_in_minigame = True
+                    self.ocr_triggered = False
 
                     with self._cache_lock:
                         if self.hit_counts is hit_counts:
@@ -573,6 +645,9 @@ class Program:
         if self.mutex_handle:
             NativeMethods.release_mutex(self.mutex_handle)
             NativeMethods.close_handle(self.mutex_handle)
+
+        if self.webhook_manager:
+            self.webhook_manager.stop()
 
     @staticmethod
     def main():

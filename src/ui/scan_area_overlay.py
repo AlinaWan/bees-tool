@@ -1,6 +1,8 @@
 import tkinter as tk
 from typing import final as sealed
 
+from core.constants import Constants
+
 @sealed
 class ScanAreaOverlay:
     """Creates a persistent overlay showing the scan boundaries and 8 markers."""
@@ -30,7 +32,7 @@ class ScanAreaOverlay:
         ]
         self.dots = []
         for px, py in self.points:
-            size = 2
+            size = int(Constants.SCREEN_HEIGHT * (4 / 1080)) # size of dots
             dot = self.canvas.create_rectangle(px-size, py-size, px+size, py+size, fill="red", outline="")
             self.dots.append(dot)
 
@@ -57,5 +59,5 @@ class ScanAreaOverlay:
             (0, h), (w//2, h), (w, h)
         ]
         for i, (px, py) in enumerate(self.points):
-            size = 2
+            size = int(Constants.SCREEN_HEIGHT * (4 / 1080))
             self.canvas.coords(self.dots[i], px-size, py-size, px+size, py+size)

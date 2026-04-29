@@ -8,7 +8,7 @@ class Config:
     # --- Slider Automation ---
     CONFIDENCE_THRESHOLD = 0.82                   # Confidence to track
     ROTATION_STEP = 45                            # Rotation steps
-    DRAG_STEP = int(Constants.SCREEN_HEIGHT * (500 / 1080)) # Drag step to drag based on the screen height
+    DRAG_STEP = int(Constants.SCREEN_HEIGHT * (480 / 1080)) # Drag step to drag based on the screen height
     COOLDOWN_MS = 100                             # Cooldown
     LOCK_DURATION_MS = 10                         # How long the object must persist to lock
     DOWNSCALE_FACTOR = 0.5                        # 0.5 = 50% size (4x faster processing)
@@ -40,6 +40,18 @@ class Config:
     CANCEL_SHUTDOWN_MOD, CANCEL_SHUTDOWN_KEY = 6, 88          # Ctrl + Shift + X (0x0002 | 0x0004, 0x58)
 
     # --- Behavior Preference ---
+    DISCORD_WEBHOOK_ENABLED = False
+    DISCORD_WEBHOOK_URL = ""
+    DISCORD_WEBHOOK_INTERVAL = 50
+    DISCORD_WEBHOOK_RARITY_ALERTS = {
+        "common": False,
+        "uncommon": False,
+        "rare": False,
+        "epic": False,
+        "legendary": False,
+        "mythic": False,
+        "secret": False,
+    }
     EXIT_ON_ROBLOX_DISCONNECT = False             # Kill the process if Roblox indicates a disconnect
     SHUTDOWN_ON_ROBLOX_DISCONNECT = False         # Send the shutdown signal after a countdown if Roblox indicates a disconnect
     EXIT_ON_ROBLOX_KILL = False                   # Kill the process if the Roblox PID dies

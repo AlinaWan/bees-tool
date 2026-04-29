@@ -203,6 +203,12 @@ class NativeMethods:
     _user32.GetParent.argtypes = [wintypes.HWND]
     _user32.GetParent.restype = wintypes.HWND
 
+    _user32.FindWindowW.argtypes = [wintypes.LPWSTR, wintypes.LPWSTR]
+    _user32.FindWindowW.restype = wintypes.HWND
+
+    _user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+    _user32.GetWindowRect.restype = wintypes.BOOL
+
     _user32.GetSystemMetrics.argtypes = [ctypes.c_int]
     _user32.GetSystemMetrics.restype = ctypes.c_int
 
@@ -342,6 +348,17 @@ class NativeMethods:
         return NativeMethods._user32.SetProcessDpiAwarenessContext(
             ctx_map.get(context, NativeMethods._DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)
         )
+
+    @staticmethod
+    def find_window(class_name: str | None, window_name: str | None) -> int:
+        return NativeMethods._user32.FindWindowW(class_name, window_name)
+
+    @staticmethod
+    def get_window_rect(hwnd: int) -> tuple[int, int, int, int]:
+        rect = wintypes.RECT()
+        if NativeMethods._user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+            return (rect.left, rect.top, rect.right, rect.bottom)
+        return (0, 0, 0, 0)
 
     # Directory monitoring related methods
     @staticmethod

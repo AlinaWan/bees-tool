@@ -30,6 +30,19 @@ Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features a
 
 -----
 
+## 🚀 Core Features
+
+* **Rotational Template Matching**: Utilizes high-frequency computer vision with rotational caching to maintain persistent target locking.
+* **Performance-Optimized C-Core**: Offloads heavy pixel scanning to a C-based DLL.
+* **Automated Catch Execution**: Handles the entire kinematic sequence from target identification to vector-calculated drag interaction.
+* **Observationally Inferred Calibration**: Self-calibrating meter detection that adapts to your screen geometry and chromatic profile.
+* **Autonomous Traversal Circuit**: Configurable movement patterns and swing cycles for fully unattended environmental interaction.
+* **Real-Time Telemetry Overlay**: Non-intrusive visual feedback system displaying ROI status, lock confidence, and calibration bars.
+* **OCR-Driven Reporting**: Integrated Windows OCR engine for parsing catch data, rarity detection, and weight tracking.
+* **Discord Webhook Integration**: Asynchronous notification system for remote session monitoring and rarity alerts.
+* **Intelligent Process Monitoring**: Automatic state management based on Roblox process health and network connectivity.
+* **Hot-Reloadable Configuration**: On-the-fly JSON profile switching and in-app menu for real-time parameter tuning.
+
 ## 📥 Installation
 
 ### 📦 Prerequites
@@ -61,70 +74,6 @@ Bees Tool relies on Windows Dynamic Link Libraries (WinDLLs) for core features a
 
 -----
 
-## 🛠️ Configuration
-
-Adjust the constants within the configuration file to align with your hardware's performance profile:
-
-### Slider Automation (Main Interaction)
-<details open>
-  <summary>Click to view</summary>
-
-| Constant | Function |
-| :--- | :--- |
-| `CONFIDENCE_THRESHOLD` | The minimum normalized correlation coefficient (`0.0` to `1.0`) required for a match. |
-| `ROTATION_STEP` | The angular increment used to generate the rotated template cache. |
-| `DRAG_STEP` | The scalar magnitude of the corrective mouse displacement applied after engagement. |
-| `COOLDOWN_MS` | The minimum delay between successive corrective drag actions. |
-| `LOCK_DURATION_MS` | The required temporal persistence (in milliseconds) before the tool engages the target. |
-| `DOWNSCALE_FACTOR` | Scaling ratio applied to the search domain to reduce computational load (`O(n²)` reduction). |
-| `BOUNDARY_MARGIN` | Pixel buffer allowing the drag destination to exist outside the ROI before invalidation. |
-| `MINIGAME_TIMEOUT_MS` | Duration a slider has not been detected before the system infers the minigame has ended. |
-
-</details>
-
-### Meter Automation (Swing Release)
-<details>
-  <summary>Click to view</summary>
-
-| Constant | Function |
-| :--- | :--- |
-| `AUTO_RELEASE_ENABLED` | Toggles the calibration and execution of the automated meter-release system. |
-| `AUTO_RELEASE_TOLERANCE` | The maximum per-channel RGB deviation allowed when validating pixel matches. |
-| `AUTO_RELEASE_CONFIDENCE` | The normalized correlation threshold required for meter template calibration. |
-| `AUTO_RELEASE_Y_OFFSET` | The vertical pixel shift that moves the sampling region downward from the detected meter anchor point. |
-| `SEARCH_DEPTH` | The number of vertical pixels scanned downward from the starting point when evaluating the meter column. |
-
-</details>
-
-### Routine Automation (Traversal & Swing Execution)
-<details>
-  <summary>Click to view</summary>
-
-| Constant | Function |
-| :--- | :--- |
-| `AUTO_ROUTINE_ENABLED` | Enables the autonomous walk-and-swing routine (implicitly forces `AUTO_RELEASE_ENABLED`). |
-| `AUTO_ROUTINE_PATTERN` | The ordered movement sequence executed between swing attempts. |
-| `AUTO_ROUTINE_WALK_TIME_MS` | Duration each movement key is held during routine traversal. |
-| `AUTO_ROUTINE_LMB_TIMEOUT_MS` | Maximum duration the routine will hold LMB awaiting a minigame before aborting the current cycle. |
-
-</details>
-
-### Behavior Preferences
-<details>
-  <summary>Click to view</summary>
-
-| Constant | Function |
-| :--- | :--- |
-| `EXIT_ON_ROBLOX_DISCONNECT` | Shuts down the program if the current Roblox instance indicates a disconnect. |
-| `SHUTDOWN_ON_ROBLOX_DISCONNECT` | Sends the shutdown signal with a 15 second timer if the current Roblox instance indicates a disconnect. |
-| `EXIT_ON_ROBLOX_KILL` | Shuts down the program if the current Roblox process ID is killed. |
-| `SHUTDOWN_ON_ROBLOX_KILL` | Sends the shutdown signal with a 15 second timer if the current Roblox process ID is killed. |
-
-</details>
-
-
------
-
 ## ⌨️ Controls
 
 | Keybind                           | Action                                                                                               |
@@ -133,6 +82,14 @@ Adjust the constants within the configuration file to align with your hardware's
 | <kbd>Ctrl</kbd> + <kbd>F10</kbd>  | **Menu Toggle**: Shows or hides the menu for importing, editing, and saving configurations           |
 | <kbd>Shift</kbd> + <kbd>Esc</kbd> | **Termination**: Immediately closes the script and destroys all overlay windows.                     |
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | **Cancel Shutdown**: Immediately aborts scheduled shutdown. |
+
+## 🛠️ Configuration
+Bees Tool is highly customizable. All performance profiles, automation behaviors, and Discord integration settings are handled via **Configuration Files** (`.json`). 
+
+> [!TIP]
+> For a full breakdown of every constant and how to tune them, please see:
+>
+> ➔ [CONFIGURATION.md](docs/CONFIGURATION.md)
 
 -----
 
@@ -168,8 +125,6 @@ Once the signature is identified, the system silently extracts the **spatial geo
 
 The moment the rising green bar's color signature enters the performance-optimized interception zone, the tool issues an immediate `button='left', direction='up'` command, executing the swing at the apex of the meter.
 
------
-
 ## 🗺️ Auto Routine & Autonomous Traversal
 
 The **Auto Routine** module extends the system beyond reactive execution into **structured environmental traversal**. Rather than remaining stationary between interactions, the tool performs a controlled movement cycle designed to periodically reposition the player and initiate new swing attempts.
@@ -191,30 +146,6 @@ If no minigame is detected within the interval defined by `AUTO_ROUTINE_LMB_TIME
 To maintain alignment with the architectural vision of the framework, the designation **Bees Tool** is to be phonetically rendered as **/biːs/** (*rhyming with "fleece" or "geese"*).
 
 The voiced alveolar fricative **/biːz/** (as in the Hymenoptera insect) is considered a lexical deviation and will not be tolerated in formal interrogation or community discourse. Proper sibilance is a prerequisite for tool competency.
-
------
-
-## 🧭 Advanced Mechanics
-
-### Rotational Memory
-
-To maintain a high framerate, the tool utilizes a **Frequency-Based Distribution Heuristic**. It maintains a historical record of the most frequently detected orientations and re-sorts the search order in real-time. By prioritizing "high-hit" rotations, the engine achieves a statistical reduction in search time—effectively checking the most probable angles first—ensuring high performance even if the target's orientation changes intermittently.
-
-### The Focus Nudge
-
-Prior to the primary interaction, the tool performs a 1-pixel relative displacement. This maneuver is designed to force the host application to update its "hover" state, ensuring the subsequent click-down event is registered *intra* the intended object's hit-box.
-
-### Configuration Portability
-
-All adjustable parameters can be stored in a human-readable `.json` file. This allows users to easily export, share, and import configurations without needing to modify the source code. These configuration files can be managed through the in-app menu, providing a user-friendly interface for customization and optimization based on individual hardware capabilities and display setups.
-
------
-
-## ⚠️ Notes & Warnings
-
-  * **Template Fidelity**: Templates based on a 1920x1080 resolution are provided as a baseline, but users may need to capture custom templates if their display configuration differs significantly. Although manual pixel coordinate entry is not required, the tool's performance is highly dependent on the quality of the template matches.
-     * **`target.png`**: The inner part of the hexagon slider. Encompass the entire white arrow and do not include the background. This one doesn't need to be pixel-perfect.
-     * **`meter.png`**: The entire completely filled green meter including the dark-green outline. You may need to take the screenshot into Adobe Photoshop or Photopea to finely crop the meter.
 
 -----
 
