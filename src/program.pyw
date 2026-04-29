@@ -8,6 +8,7 @@ faulthandler.enable()
 
 import asyncio
 import atexit
+from multiprocessing import Process, Queue, shared_memory
 import threading
 import time
 from typing import final as sealed
@@ -21,8 +22,8 @@ from core.config import Config
 from core.config_handler import ConfigHandler
 from core.constants import Constants
 from core.native_methods import NativeMethods
-from services.file_watcher import FileWatcher
 from services.hotkey_listener import HotkeyListener
+from services.ocr_worker import start_worker
 from services.process_monitor import ProcessMonitor
 from services.recache_manager import RecacheManager
 from services.roblox_log_monitor import RobloxLogMonitor
@@ -31,8 +32,6 @@ from ui.menu_overlay import MenuOverlay
 from ui.release_bars_overlay import ReleaseBarsOverlay
 from ui.scan_area_overlay import ScanAreaOverlay
 from ui.tooltip_marker import TooltipMarker
-from utils.ocr_engine import WindowsOCR
-from utils.ocr_parser import OCRParser
 from utils.process_locator import ProcessLocator
 from utils.safe_message_box import SafeMessageBox
 from utils.system_controller import SystemController
@@ -49,6 +48,12 @@ class Program:
         self.log_monitor = RobloxLogMonitor()
         self.system_controller = SystemController()
         self.hotkey_listener = None
+
+        self.ocr_process = None
+        self.ocr_request_q = None
+        self.ocr_result_q = None
+        self.ocr_shm = None
+        self.ocr_frame_shape = (Config.DRAG_STEP, Config.DRAG_STEP, 3)
 
         self.mutex_handle = None
 
@@ -318,6 +323,31 @@ class Program:
         target_start_time = None
     
         with mss() as sct:
+            self.ocr_request_q = Queue()
+            self.ocr_result_q = Queue()
+
+            dummy = np.zeros(self.ocr_frame_shape, dtype=np.uint8)
+            self.ocr_shm = shared_memory.SharedMemory(create=True, size=dummy.nbytes)
+
+            self.ocr_process = Process(
+                target=start_worker,
+                args=(
+                    self.ocr_shm.name,
+                    self.ocr_frame_shape,
+                    np.uint8,
+                    self.ocr_request_q,
+                    self.ocr_result_q
+                ),
+                daemon=True
+            )
+            self.ocr_process.start()
+
+            self.ocr_frame = np.ndarray(
+                self.ocr_frame_shape,
+                dtype=np.uint8,
+                buffer=self.ocr_shm.buf
+            )
+
             full_mon = sct.monitors[1]
 
             self.full_w = full_mon['width']
@@ -501,43 +531,66 @@ class Program:
 
                             ocr_sct = sct.grab(ocr_roi)
                             ocr_img = np.array(ocr_sct)[:, :, :3]
-        
-                            # Detect Rarity and Parse Text
-                            rarity = OCRParser.detect_rarity_by_color(ocr_img) # take rarity before converting to grayscale
 
-                            should_alert = Config.DISCORD_WEBHOOK_RARITY_ALERTS.get(rarity.lower(), False)
+                            # copy into shared memory
+                            h, w, _ = ocr_img.shape
+                            self.ocr_frame[:h, :w] = ocr_img
 
-                            # save compute by only moving to OCR if we care about this rarity
-                            if should_alert:
-                                gray = cv2.cvtColor(ocr_img, cv2.COLOR_BGR2GRAY)
-                                _, thresh_img = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) # thres from strict b&w. otsu is best for text
+                            # request processing (NON-BLOCKING FIRE)
+                            if self.ocr_request_q.qsize() < 2:
+                                self.ocr_request_q.put("PROCESS")
 
-                                ocr_engine = WindowsOCR()
-                                raw_text = asyncio.run(ocr_engine.get_text_from_bytes(cv2.imencode('.png', thresh_img)[1].tobytes()))
-        
-                                bee_name, bee_weight = OCRParser.parse_bee_text(raw_text)
+                    while not self.ocr_result_q.empty():
+                        result = self.ocr_result_q.get()
 
-                                print(f"[Program::OCR] Raw OCR: {raw_text}")
-                                print(f"[Program::OCR] ├─ Parsed OCR: {bee_name, bee_weight}")
-                                print(f"[Program::OCR] └─ Detected Rarity: {rarity}")
+                        if "error" in result:
+                            print(f"[Program::OCR]? {result['error']}")
+                            continue
 
-                                full_win_sct = sct.grab({"left": win_x, "top": win_y, "width": win_w, "height": win_h})
-                                full_bytes = cv2.imencode('.png', np.array(full_win_sct))[1].tobytes()
-            
-                                # Send formatted structure for chosen rarities
-                                self.webhook_manager.send_alert(
-                                    message=f"**{bee_name}**",
-                                    count=self.bees_caught,
-                                    image_bytes=full_bytes,
-                                    rarity=rarity,
-                                    weight=bee_weight
-                                )
-        
-                            if self.bees_caught % self.webhook_manager.interval == 0:
-                                # General interval status
-                                self.webhook_manager.send_status(
-                                    f"🐝 **{self.bees_caught}** bees caught!"
-                                )
+                        bee_name = result["bee_name"]
+                        # VALIDATION: If OCR failed to find a name, don't send a rarity alert
+                        if bee_name == "Unknown Bee":
+                            print("[Program::OCR] Skipping alert: OCR could not identify bee.")
+                            continue
+
+                        rarity = result["rarity"]
+                        raw_text = result["raw_text"]
+                        bee_weight = result["bee_weight"]
+
+                        should_alert = Config.DISCORD_WEBHOOK_RARITY_ALERTS.get(rarity.lower(), False)
+                        if not should_alert:
+                            continue
+
+                        print(f"[Program::OCR] Raw OCR: {raw_text}")
+                        print(f"[Program::OCR] ├─ Parsed OCR: {(bee_name, bee_weight)}")
+                        print(f"[Program::OCR] └─ Detected Rarity: {rarity}")
+
+                        hwnd = NativeMethods.find_window(None, "Roblox")
+                        if hwnd:
+                            rect = NativeMethods.get_window_rect(hwnd)
+                            win_x, win_y, win_right, win_bottom = rect
+                            win_w, win_h = win_right - win_x, win_bottom - win_y
+
+                            full_win_sct = sct.grab({
+                                "left": win_x,
+                                "top": win_y,
+                                "width": win_w,
+                                "height": win_h
+                            })
+
+                            full_bytes = cv2.imencode(
+                                ".jpg", 
+                                np.array(full_win_sct), 
+                                [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+                            )[1].tobytes()
+
+                            self.webhook_manager.send_alert(
+                                message=f"**{bee_name}**",
+                                count=self.bees_caught,
+                                image_bytes=full_bytes,
+                                rarity=rarity,
+                                weight=bee_weight
+                            )
 
                 if not self.is_active:
                     marker.hide()
@@ -656,6 +709,20 @@ class Program:
 
         if self.webhook_manager:
             self.webhook_manager.stop()
+
+        if self.ocr_request_q:
+            try:
+                self.ocr_request_q.put("STOP")
+            except:
+                pass
+
+        if self.ocr_process:
+            self.ocr_process.terminate()
+            self.ocr_process.join(timeout=1)
+
+        if self.ocr_shm:
+            self.ocr_shm.close()
+            self.ocr_shm.unlink()
 
     @staticmethod
     def main():

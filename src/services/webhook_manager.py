@@ -27,11 +27,9 @@ class WebhookManager:
         self.interval = getattr(Config, "DISCORD_WEBHOOK_INTERVAL", 50)
 
     def send_alert(self, message: str, count: int, image_bytes=None, rarity="Common", weight="0kg"):
-        if message.strip().lower() == "unknown bee" and weight.lower() == "unknown": # if only one is unknown send it anyways as
-                                                                                     # it's probably valid, just couldn't extract
+        if message.strip().lower() == "Unknown Bee" and weight.lower() == "unknown": # if only one is unknown send it anyways as
+            return                                                                   # it's probably valid, just couldn't extract
                                                                                      # one of the parts well
-            return
-
         if self.enabled and self.url:
             data = Constants.RARITY_DATA.get(rarity, Constants.RARITY_DATA["Common"])
             payload = {

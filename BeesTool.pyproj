@@ -33,6 +33,7 @@
     <Compile Include="src\core\__init__.py" />
     <Compile Include="src\services\file_watcher.py" />
     <Compile Include="src\services\hotkey_listener.py" />
+    <Compile Include="src\services\ocr_worker.py" />
     <Compile Include="src\services\process_monitor.py" />
     <Compile Include="src\services\recache_manager.py" />
     <Compile Include="src\services\roblox_log_monitor.py" />
