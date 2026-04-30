@@ -57,10 +57,7 @@ class OCRParser:
         
         bee_name = bee_name.title().strip()
 
-        # --- Enhanced Weight Extraction ---
-        # 1. Broad search: Look for numbers OR look-alike characters (S, I, l, O, Q) 
-        # followed by the unit (kg/mg)
-        weight_match = re.search(r"([0-9SlIOQ]+(?:\.[0-9SlIOQ]+)?\s*[kKmM][gG])", clean)
+        weight_match = re.search(r"([0-9SlIOQ]+(?:\.[0-9SlIOQ]+)?\s*[kK][gG])", clean)
         
         if weight_match:
             raw_weight = weight_match.group(1).lower()
@@ -78,7 +75,7 @@ class OCRParser:
             for char, replacement in mapping.items():
                 raw_weight = raw_weight.replace(char, replacement)
             
-            bee_weight = raw_weight
+            bee_weight = raw_weight.replace(" ", "")
         else:
             bee_weight = "unknown"
 
