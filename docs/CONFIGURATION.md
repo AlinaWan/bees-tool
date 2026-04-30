@@ -43,6 +43,7 @@ Adjust these values within your `.json` config to align with your hardware's per
 | `DISCORD_WEBHOOK_ENABLED` | Global toggle for Discord notifications. |
 | `DISCORD_WEBHOOK_URL` | Your private Discord Webhook URL to send the notifications. |
 | `DISCORD_WEBHOOK_INTERVAL` | How often (in number of catches) the tool sends a "Total Caught" status update. |
+| `DISCORD_WEBHOOK_RARITY_TOLERANCE` | The maximum per-channel RGB deviation allowed when validating pixel matches for rarity colors. |
 | `DISCORD_WEBHOOK_RARITY_ALERTS` | A map of bee rarities (e.g., `mythic`, `secret`) that will trigger an immediate notification with a screenshot of the entire screen. |
 | `EXIT_ON_ROBLOX_DISCONNECT` | Shuts down the program if the current Roblox instance indicates a disconnect. |
 | `SHUTDOWN_ON_ROBLOX_DISCONNECT` | Sends the shutdown signal with a 15 second timer if the current Roblox instance indicates a disconnect. |

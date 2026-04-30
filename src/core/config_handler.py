@@ -65,6 +65,7 @@ class ConfigHandler:
         Config.DISCORD_WEBHOOK_ENABLED = evaluator.evaluate(b["discord_webhook_enabled"])
         Config.DISCORD_WEBHOOK_URL = b["discord_webhook_url"]
         Config.DISCORD_WEBHOOK_INTERVAL = evaluator.evaluate(b["discord_webhook_interval"])
+        Config.DISCORD_WEBHOOK_RARITY_TOLERANCE = evaluator.evaluate(b["discord_webhook_rarity_tolerance"])
         Config.DISCORD_WEBHOOK_RARITY_ALERTS = {
             k.lower(): bool(v)
             for k, v in b.get("discord_webhook_rarity_alerts", {}).items()
@@ -134,14 +135,15 @@ class ConfigHandler:
                 "cancel_shutdown": { "mod": Config.CANCEL_SHUTDOWN_MOD, "key": Config.CANCEL_SHUTDOWN_KEY }
             },
             "behavior_settings": {
-                "discord_webhook_enabled":       Config.DISCORD_WEBHOOK_ENABLED,
-                "discord_webhook_url":           Config.DISCORD_WEBHOOK_URL,
-                "discord_webhook_interval":      Config.DISCORD_WEBHOOK_INTERVAL,
-                "discord_webhook_rarity_alerts": Config.DISCORD_WEBHOOK_RARITY_ALERTS,
-                "exit_on_roblox_disconnect":     Config.EXIT_ON_ROBLOX_DISCONNECT,
-                "shutdown_on_roblox_disconnect": Config.SHUTDOWN_ON_ROBLOX_DISCONNECT,
-                "exit_on_roblox_kill":           Config.EXIT_ON_ROBLOX_KILL,
-                "shutdown_on_roblox_kill":       Config.SHUTDOWN_ON_ROBLOX_KILL
+                "discord_webhook_enabled":          Config.DISCORD_WEBHOOK_ENABLED,
+                "discord_webhook_url":              Config.DISCORD_WEBHOOK_URL,
+                "discord_webhook_interval":         Config.DISCORD_WEBHOOK_INTERVAL,
+                "discord_webhook_rarity_tolerance": Config.DISCORD_WEBHOOK_RARITY_TOLERANCE,
+                "discord_webhook_rarity_alerts":    Config.DISCORD_WEBHOOK_RARITY_ALERTS,
+                "exit_on_roblox_disconnect":        Config.EXIT_ON_ROBLOX_DISCONNECT,
+                "shutdown_on_roblox_disconnect":    Config.SHUTDOWN_ON_ROBLOX_DISCONNECT,
+                "exit_on_roblox_kill":              Config.EXIT_ON_ROBLOX_KILL,
+                "shutdown_on_roblox_kill":          Config.SHUTDOWN_ON_ROBLOX_KILL
             }
         }
 

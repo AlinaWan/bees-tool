@@ -2,19 +2,20 @@ import numpy as np
 import re
 from typing import final as sealed
 
+from core.config import Config
 from core.constants import Constants
 
 @sealed
 class OCRParser:
     @staticmethod
-    def _find_color_hit(img_bgr, target_bgr, tolerance=25, strip=5):
+    def _find_color_hit(img_bgr, target_bgr, tolerance=10, strip=100):
         diff = np.abs(img_bgr.astype(np.int16) - np.array(target_bgr, dtype=np.int16))
-        mask = np.sum(diff, axis=2) <= tolerance
+        mask = np.all(diff <= tolerance, axis=2) # per channel
 
         # we look for strip number of True values in a row
-        for row in mask:
+        for row in mask[::-1]: # [::-1] to reverse the rows (iterate bottom to top)
             count = 0
-            for hit in row:
+            for hit in row: # left to right
                 if hit:
                     count += 1
                     if count >= strip:
@@ -36,9 +37,9 @@ class OCRParser:
         clean = re.sub(r"\bk g\b", "kg", clean, flags=re.IGNORECASE)
 
         # --- Bee detection & Name extraction ---
-        has_bee_word = bool(re.search(r"\bBee\b", clean, re.IGNORECASE))
-        ends_with_stuck_bee = re.search(r"[A-Za-z]+Bee\b", clean)
-
+        has_bee_word = bool(re.search(r"\bBee\b", clean, re.IGNORECASE)) 
+        ends_with_stuck_bee = re.search(r"[A-Za-z]+Bee\b", clean) # IMPORTANT: B must be capital or else
+                                                                  # it will split things like Zombee
         if ends_with_stuck_bee and not has_bee_word: # Fix missing space before 'Bee'
             clean = re.sub(r"([A-Za-z]+)Bee\b", r"\1 Bee", clean)
 
@@ -86,15 +87,19 @@ class OCRParser:
     @staticmethod
     def detect_rarity_by_color(img_bgr):
 
-        h = img_bgr.shape[0]
+        # h = img_bgr.shape[0]
 
         # take bottom half of OCR ROI
-        img_bgr = img_bgr[h // 2:, :]
+        # img_bgr = img_bgr[h // 2:, :]
+
+        # import cv2
+        # cv2.imshow("rarity_roi", img_bgr)
+        # cv2.waitKey(1)
 
         best_match = "Common"
 
         for name, data in Constants.RARITY_DATA.items():
-            if OCRParser._find_color_hit(img_bgr, data["color_bgr"]):
+            if OCRParser._find_color_hit(img_bgr, data["color_bgr"], Config.DISCORD_WEBHOOK_RARITY_TOLERANCE, int(Config.DRAG_STEP//4)):
                 return name
 
         return best_match

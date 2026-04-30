@@ -43,6 +43,7 @@ class Config:
     DISCORD_WEBHOOK_ENABLED = False
     DISCORD_WEBHOOK_URL = ""
     DISCORD_WEBHOOK_INTERVAL = 50
+    DISCORD_WEBHOOK_RARITY_TOLERANCE = 10
     DISCORD_WEBHOOK_RARITY_ALERTS = {
         "common": False,
         "uncommon": False,

@@ -514,6 +514,12 @@ class Program:
                         self.bees_caught += 1
                         self.ocr_triggered = True
 
+                        if self.bees_caught % self.webhook_manager.interval == 0:
+                            # General interval status
+                            self.webhook_manager.send_status(
+                                f"🐝 **{self.bees_caught}** bees caught!"
+                            )
+
                         # print(f"[Program::Webhook] Bees Caught: {self.bees_caught}")
 
                         hwnd = NativeMethods.find_window(None, "Roblox")
