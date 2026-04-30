@@ -8,25 +8,19 @@ from core.constants import Constants
 class OCRParser:
     @staticmethod
     def _find_color_hit(img_bgr, target_bgr, tolerance=25, strip=5):
-        target = np.array(target_bgr, dtype=np.int16)
-        img = img_bgr.astype(np.int16)
+        diff = np.abs(img_bgr.astype(np.int16) - np.array(target_bgr, dtype=np.int16))
+        mask = np.sum(diff, axis=2) <= tolerance
 
-        h, w, _ = img.shape
-
-        for x in range(w):
-            run = 0
-
-            for y in range(h):
-                pixel = img[y, x]
-
-                diff = np.abs(pixel - target)
-                if diff[0] + diff[1] + diff[2] <= tolerance:
-                    run += 1
-                    if run >= strip:
+        # we look for strip number of True values in a row
+        for row in mask:
+            count = 0
+            for hit in row:
+                if hit:
+                    count += 1
+                    if count >= strip:
                         return True
                 else:
-                    run = 0  # reset strip if broken
-
+                    count = 0
         return False
 
     def parse_bee_text(text: str):

@@ -6,11 +6,10 @@ __license__ = "MIT"
 import faulthandler
 faulthandler.enable()
 
-import asyncio
 import atexit
-from multiprocessing import Process, Queue, shared_memory
 import threading
 import time
+from multiprocessing import Process, Queue, Lock, shared_memory
 from typing import final as sealed
 
 import cv2 # type: ignore
@@ -50,8 +49,9 @@ class Program:
         self.hotkey_listener = None
 
         self.ocr_process = None
-        self.ocr_request_q = None
-        self.ocr_result_q = None
+        self.ocr_request_q = Queue()
+        self.ocr_result_q = Queue()
+        self.ocr_lock = Lock()
         self.ocr_shm = None
         self.ocr_frame_shape = (Config.DRAG_STEP, Config.DRAG_STEP, 3)
 
@@ -336,7 +336,8 @@ class Program:
                     self.ocr_frame_shape,
                     np.uint8,
                     self.ocr_request_q,
-                    self.ocr_result_q
+                    self.ocr_result_q,
+                    self.ocr_lock
                 ),
                 daemon=True
             )
@@ -534,7 +535,8 @@ class Program:
 
                             # copy into shared memory
                             h, w, _ = ocr_img.shape
-                            self.ocr_frame[:h, :w] = ocr_img
+                            with self.ocr_lock:
+                                self.ocr_frame[:h, :w] = ocr_img
 
                             # request processing (NON-BLOCKING FIRE)
                             if self.ocr_request_q.qsize() < 2:
