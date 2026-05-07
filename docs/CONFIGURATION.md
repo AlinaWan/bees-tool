@@ -51,7 +51,6 @@ Adjust these values within your `.json` config to align with your hardware's per
 | `SHUTDOWN_ON_ROBLOX_KILL` | Sends the shutdown signal with a 15 second timer if the current Roblox process ID is killed. |
 
 > [!CAUTION]
-> ### 🛡️ SECURITY WARNING
 > **Do not share your configuration files if they contain a `DISCORD_WEBHOOK_URL`.**
 >
 > Anyone with this URL can send messages to your Discord server or potentially delete the webhook. Treat this URL like a password.
